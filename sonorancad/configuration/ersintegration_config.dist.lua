@@ -34,6 +34,7 @@ local config = {
             ["zip"] = "PostalCode",
             ["phone"] = "Phone",
             ["skin"] = "Nationality",
+            ["img"] = "ProfilePicture"
             -- Add more keys as needed:
             -- email = "Email"  -- Example: if pedData.Email exists.
         },
