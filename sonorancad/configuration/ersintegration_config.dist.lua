@@ -31,7 +31,7 @@ local config = {
             ["dob"] = "DOB",
             ["sex"] = "Gender",
             ["residence"] = "Address",
-            ["zip"] = "Zip",
+            ["zip"] = "PostalCode",
             ["phone"] = "Phone",
             ["skin"] = "Nationality",
             -- Add more keys as needed:
