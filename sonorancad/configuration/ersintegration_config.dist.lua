@@ -29,6 +29,15 @@ local config = {
             ["first"] = "FirstName",
             ["last"] = "LastName",
             ["dob"] = "DOB",
+            ["age"] = function(pedData)
+                local birth = os.date("*t", os.time({year=tonumber(pedData.DOB:sub(7,10)), month=tonumber(pedData.DOB:sub(1,2)), day=tonumber(pedData.DOB:sub(4,5))}))
+                local now = os.date("*t")
+                local age = now.year - birth.year
+                if now.month < birth.month or (now.month == birth.month and now.day < birth.day) then
+                    age = age - 1
+                end
+                return tostring(age)
+            end,
             ["sex"] = "Gender",
             ["residence"] = "Address",
             ["zip"] = "PostalCode",
