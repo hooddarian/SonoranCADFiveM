@@ -133,8 +133,12 @@ local config = {
             ["878766af4964853a7"] = function(pedData, ctx)
                 return pedData[ctx.is_valid] and "VALID" or "EXPIRED"
             end,
-            ["_54iz1scv7"] = function(pedData)
-                return os.date("%m/%d/%Y", os.time() + (60 * 60 * 24 * 365)) -- +1 year
+            ["_54iz1scv7"] = function(pedData, ctx)
+                if pedData[ctx.license] == "Expired" then
+                    return os.date("%m/%d/%Y", os.time() - (60 * 60 * 24 * math.random(1, 365))) -- Within the last year
+                end
+
+                return os.date("%m/%d/%Y", os.time() + (60 * 60 * 24 * math.random(1, 365))) -- Within a year
             end,
             -- Civilian Information
             ["first"] = "FirstName",
