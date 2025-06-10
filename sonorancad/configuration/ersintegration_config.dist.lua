@@ -11,6 +11,7 @@ local config = {
     pluginAuthor = "SonoranCAD", -- author
     configVersion = "1.1",
     -- put your configuration options below
+    DOBFormat = "en", -- Make sure this matches 
     create911Call = true, -- Create a 911 call when an ERS callout is created
     createEmergencyCall = true, -- Create an emergency call when an ERS callout is accepted
     callPriority = 2, -- Priority of the call created in CAD (1-3) | Only used if createEmergencyCall is true
@@ -30,13 +31,7 @@ local config = {
             ["last"] = "LastName",
             ["dob"] = "DOB",
             ["age"] = function(pedData)
-                local birth = os.date("*t", os.time({year=tonumber(pedData.DOB:sub(7,10)), month=tonumber(pedData.DOB:sub(1,2)), day=tonumber(pedData.DOB:sub(4,5))}))
-                local now = os.date("*t")
-                local age = now.year - birth.year
-                if now.month < birth.month or (now.month == birth.month and now.day < birth.day) then
-                    age = age - 1
-                end
-                return tostring(age)
+                return returnAgeFromDobString(pedData.DOB)
             end,
             ["sex"] = "Gender",
             ["residence"] = "Address",
@@ -155,13 +150,7 @@ local config = {
             ["mi"] = "", -- No M.I. mapped
             ["dob"] = "DOB",
             ["age"] = function(pedData)
-                local birth = os.date("*t", os.time({year=tonumber(pedData.DOB:sub(7,10)), month=tonumber(pedData.DOB:sub(1,2)), day=tonumber(pedData.DOB:sub(4,5))}))
-                local now = os.date("*t")
-                local age = now.year - birth.year
-                if now.month < birth.month or (now.month == birth.month and now.day < birth.day) then
-                    age = age - 1
-                end
-                return tostring(age)
+                return returnAgeFromDobString(pedData.DOB)
             end,
             ["sex"] = "Gender",
             ["residence"] = "Address",
@@ -179,3 +168,26 @@ local config = {
 }
 
 if config.enabled then Config.RegisterPluginConfig(config.pluginName, config) end
+
+function returnAgeFromDobString(dobString)
+    local day, month, year
+
+    if config.DOBFormat == "en" then
+        day = tonumber(dobString:sub(1,2))
+        month = tonumber(dobString:sub(4,5))
+        year = tonumber(dobString:sub(7,10))
+    elseif config.DOBFormat == "us" then
+        day = tonumber(dobString:sub(4,5))
+        month = tonumber(dobString:sub(1,2))
+        year = tonumber(dobString:sub(7,10))
+    end
+
+    local today = os.date("*t")
+    local age = today.year - year
+
+    if today.month < month or (today.month == month and today.day < day) then
+        age = age - 1
+    end
+
+    return tostring(age)
+end
