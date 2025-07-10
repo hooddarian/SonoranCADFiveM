@@ -11,7 +11,7 @@ local config = {
     pluginAuthor = "SonoranCAD", -- author
     configVersion = "1.2",
     -- put your configuration options below
-    DOBFormat = "en", -- Make sure this matches
+    DOBFormat = "en", -- Make sure this matches | en: dd/mm/yyyy | us: mm/dd/yyyy | iso: yyyy/mm/dd
     create911Call = true, -- Create a 911 call when an ERS callout is created
     createEmergencyCall = true, -- Create an emergency call when an ERS callout is accepted
     callPriority = 2, -- Priority of the call created in CAD (1-3) | Only used if createEmergencyCall is true
@@ -172,14 +172,22 @@ if config.enabled then Config.RegisterPluginConfig(config.pluginName, config) en
 function returnAgeFromDobString(dobString)
     local day, month, year
 
-    if config.DOBFormat == "en" then
+    if config.DOBFormat == "en" then -- dd/mm/yyyy
         day = tonumber(dobString:sub(1,2))
         month = tonumber(dobString:sub(4,5))
         year = tonumber(dobString:sub(7,10))
-    elseif config.DOBFormat == "us" then
-        day = tonumber(dobString:sub(4,5))
+
+    elseif config.DOBFormat == "us" then -- mm/dd/yyyy
         month = tonumber(dobString:sub(1,2))
+        day = tonumber(dobString:sub(4,5))
         year = tonumber(dobString:sub(7,10))
+
+    elseif config.DOBFormat == "iso" then -- yyyy/mm/dd
+        year = tonumber(dobString:sub(1,4))
+        month = tonumber(dobString:sub(6,7))
+        day = tonumber(dobString:sub(9,10))
+    else
+        errorLog("Unsupported DOB format: " .. tostring(config.DOBFormat))
     end
 
     local today = os.date("*t")
