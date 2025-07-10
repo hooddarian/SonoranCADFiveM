@@ -1,5 +1,5 @@
 {
-  "resource": "3.2.8",
+  "resource": "3.2.9",
   "testedFxServerVersion": "5932",
   "submoduleConfigs": {
     "callcommands": {
@@ -108,7 +108,7 @@
       ]
     },
     "ersintegration": {
-      "version": "1.1",
+      "version": "1.2",
       "requiresPlugins": []
     },
     "localcallers": {
