@@ -1,0 +1,59 @@
+CreateThread(function()
+    Config.LoadPlugin("bodycam", function(pluginConfig)
+        if pluginConfig.enabled then
+            RegisterCommand(pluginConfig.command, function(source, args, rawCommand)
+                if Config.apiVersion < 4 then
+                    errorLog('Bodycam is only enabled with SonoranCAD Pro.')
+                    TriggerClientEvent('chat:addMessage', source, {
+                        args = {
+                            'Sonoran Bodycam',
+                            'Bodycam is only enabled with SonoranCAD Pro.'
+                        }
+                    })
+                    return
+                end
+                if #args == 0 then
+                    TriggerClientEvent('SonoranCAD::bodycam::Toggle', source, true)
+                end
+                if args[1] == 'freq' then
+                    TriggerClientEvent('SonoranCAD::bodycam::SetFreq', source, args[2])
+                elseif args[1] == 'sound' then
+                    TriggerClientEvent('SonoranCAD::bodycam::SetSound', source, args[2])
+                elseif args[1] == 'anim' then
+                    TriggerClientEvent('SonoranCAD:bodycam::Animation', source)
+                end
+            end, false)
+
+            RegisterNetEvent('SonoranCAD::bodycam::Request', function()
+                if not Config.proxyUrl or Config.proxyUrl == '' then
+                    -- tell client we're not ready
+                    TriggerClientEvent('SonoranCAD::bodycam::Init', source, 0, Config.apiVersion)
+                else
+                    -- tell client we're ready
+                    if Config.apiVersion == -1 then
+                        debugLog('API version not set, waiting for it to be set...')
+                        while Config.apiVersion == -1 do Wait(1000) end
+                    end
+                    TriggerClientEvent('SonoranCAD::bodycam::Init', source, 1, Config.apiVersion)
+                end
+            end)
+
+            RegisterNetEvent('SonoranCAD::core::PlayerReady', function()
+                if not Config.proxyUrl or Config.proxyUrl == '' then
+                    TriggerClientEvent('SonoranCAD::bodycam:Init', source, 0, Config.apiVersion)
+                else
+                    if Config.apiVersion == -1 then
+                        debugLog('API Version not set, waiting for it to be set...')
+                        while Config.apiVersion == -1 do Wait(1000) end
+                    end
+                    TriggerClientEvent('SonoranCAD::bodycam:Init', source, 0, Config.apiVersion)
+                end
+            end)
+
+            RegisterNetEvent('SonoranCAD::bodycam::RequestSound', function()
+                local source = source
+                TriggerClientEvent('SonoranCAD::bodycam::GiveSound', -1, source, GetEntityCoords(GetPlayerPed(source)))
+            end)
+        end
+    end)
+end)
