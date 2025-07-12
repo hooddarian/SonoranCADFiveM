@@ -16,11 +16,13 @@ CreateThread(function()
                     TriggerClientEvent('SonoranCAD::bodycam::Toggle', source, true)
                 end
                 if args[1] == 'freq' then
-                    TriggerClientEvent('SonoranCAD::bodycam::SetFreq', source, args[2])
+                    TriggerClientEvent('SonoranCAD::bodycam::SetScreenshotFrequency', source, args[2])
                 elseif args[1] == 'sound' then
-                    TriggerClientEvent('SonoranCAD::bodycam::SetSound', source, args[2])
+                    TriggerClientEvent('SonoranCAD::bodycam::SetSoundLevel', source, args[2])
                 elseif args[1] == 'anim' then
-                    TriggerClientEvent('SonoranCAD:bodycam::Animation', source)
+                    TriggerClientEvent('SonoranCAD::bodycam::ToggleAnimation', source)
+                elseif args[1] == 'overlay' then
+                    TriggerClientEvent('SonoranCAD::bodycam::ToggleOverlay', source)
                 end
             end, false)
 
