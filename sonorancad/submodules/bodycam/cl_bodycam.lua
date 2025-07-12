@@ -65,9 +65,7 @@ CreateThread(function()
             RegisterCommand('SonoranCAD::bodycam::Keybind', function()
                 TriggerEvent('SonoranCAD::bodycam::Toggle', true)
             end, false)
-            RegisterKeyMapping('SonoranCAD::bodycam::Keybind', "Toggle BodyCam", pluginConfig.defaultKeyMapper,
-                pluginConfig.defaultKeyParameter)
-
+            RegisterKeyMapping('SonoranCAD::bodycam::Keybind', "Toggle BodyCam", "keyboard", pluginConfig.defaultKeybind)
             CreateThread(function()
                 while pluginConfig.autoEnableWithWeapons do
                     Wait(1)
