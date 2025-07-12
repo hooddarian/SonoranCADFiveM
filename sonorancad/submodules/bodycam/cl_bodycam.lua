@@ -42,13 +42,11 @@ CreateThread(function()
             end
 
             function PlayBeepSound()
-                if pluginConfig.soundType == 'native' then
-                    TriggerServerEvent('SonoranCAD::bodycam::RequestSound')
+                if pluginConfig.beepType == 'native' then
                     local coord = GetEntityCoords(GetPlayerPed(PlayerId()))
                     PlaySoundFromCoord(-1, 'Beep_Red', coord.x, coord.y, coord.z,
                         'DLC_HEIST_HACKING_SNAKE_SOUNDS', false, 0, false)
                 else
-                    TriggerServerEvent('SonoranCAD::bodycam::RequestSound')
                     SendNUIMessage({
                         type = 'playSound',
                         transactionFile = 'sounds/beeps.mp3',
@@ -127,7 +125,8 @@ CreateThread(function()
                     if pluginConfig.enableBeeps then
                         if isOn then
                             PlayBeepSound()
-                            Wait(pluginConfig.beepFreq)
+                            TriggerServerEvent('SonoranCAD::bodycam::RequestSound')
+                            Wait(pluginConfig.beepFrequency)
                         end
                     end
                 end
@@ -151,13 +150,8 @@ CreateThread(function()
                 if apiVersion ~= -1 then
                     Config.apiVersion = apiVersion
                 end
-                RegisterNetEvent('SonoranCAD::bodycam::ToggleAnimation', function()
-                    if doAnimation then
-                        doAnimation = false
-                    else
-                        doAnimation = true
-                    end
-                end)
+                
+
                 RegisterNetEvent('SonoranCAD::bodycam::Toggle', function(manualActivation)
                     if pluginConfig.enableWhitelist and not IsWearingBodycam() then
                         TriggerEvent('chat:addMessage',
@@ -224,7 +218,7 @@ CreateThread(function()
                         })
                     end
                 end)
-                RegisterNetEvent('SonoranCAD::bodycam::SetSoundlevel', function(level)
+                RegisterNetEvent('SonoranCAD::bodycam::SetSoundLevel', function(level)
                     if level then
                         level = tonumber(level)
                         if not level or level <= 0 or level > 1 then
@@ -242,6 +236,30 @@ CreateThread(function()
                             args = { 'Sonoran Bodycam', ('Current sound level is %s'):format((soundLevel)) }
                         })
                     end
+                end)
+                RegisterNetEvent('SonoranCAD::bodycam::ToggleAnimation', function()
+                    if doAnimation then
+                        doAnimation = false
+                    else
+                        doAnimation = true
+                    end
+                    TriggerEvent('chat:addMessage',
+                    { args = { 'Sonoran Bodycam', ('Animations set to %s'):format(doAnimation) } })
+                end)
+                RegisterNetEvent('SonoranCAD::bodycam::ToggleOverlay', function()
+                    if showOverlay then
+                        showOverlay=false
+                    else
+                        showOverlay=true
+                    end
+                    if isOn then
+                        SendNUIMessage({
+                            type = 'toggleGif',
+                            location = pluginConfig.overlayLocation
+                        })
+                    end
+                    TriggerEvent('chat:addMessage',
+                    { args = { 'Sonoran Bodycam', ('Overlay set to %s'):format(showOverlay) } })
                 end)
             end)
         end
