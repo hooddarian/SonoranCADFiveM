@@ -160,7 +160,7 @@ CreateThread(function()
                         return
                     end
 
-                    if manualActivation and doAnimation and IsWearingBodycam() then
+                    if manualActivation and doAnimation then
                         local ped = PlayerPedId()
                         RequestAnimDict("clothingtie")
                         while not HasAnimDictLoaded("clothingtie") do
