@@ -76,13 +76,7 @@ CreateThread(function()
                     if not isOn and pluginConfig.weapons then
                         for _, weaponName in ipairs(pluginConfig.weapons) do
                             if weapon == GetHashKey(weaponName) then
-                                if pluginConfig.enableClothingWhitelist then
-                                    if IsWearingBodycam() then
-                                        TriggerEvent('SonoranCAD::bodycam::Toggle', false)
-                                    end
-                                else
-                                    TriggerEvent('SonoranCAD::bodycam::Toggle', false)
-                                end
+                                TriggerEvent('SonoranCAD::bodycam::Toggle', false)
                                 break
                             end
                         end
@@ -101,10 +95,8 @@ CreateThread(function()
                             if not isOn then
                                 TriggerEvent('SonoranCAD::bodycam::Toggle', false)
                             end
-                        else
-                            if isOn then
-                                TriggerEvent('SonoranCAD::bodycam::Toggle', false)
-                            end
+                        elseif not IsVehicleSirenOn(veh) and isOn then
+                            TriggerEvent('SonoranCAD::bodycam::Toggle', false)
                         end
                     end
                 end
