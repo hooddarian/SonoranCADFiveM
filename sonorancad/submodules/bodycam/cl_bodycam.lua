@@ -7,6 +7,7 @@ CreateThread(function()
     Config.LoadPlugin("bodycam", function(pluginConfig)
         if pluginConfig.enabled then
             doAnimation = pluginConfig.enableAnimation
+            showOverlay = pluginConfig.enableOverlay
             screenshotFrequency = pluginConfig.screenshotFrequency
 
             function IsWearingBodycam()
@@ -150,7 +151,7 @@ CreateThread(function()
                 if apiVersion ~= -1 then
                     Config.apiVersion = apiVersion
                 end
-                
+
 
                 RegisterNetEvent('SonoranCAD::bodycam::Toggle', function(manualActivation)
                     if pluginConfig.enableWhitelist and not IsWearingBodycam() then
@@ -171,13 +172,11 @@ CreateThread(function()
 
                     if isOn then
                         isOn = false
-                        if pluginConfig.enableOverlay then
-                            if showOverlay then
-                                SendNUIMessage({
-                                    type = 'toggleGif',
-                                    location = pluginConfig.overlayLocation
-                                })
-                            end
+                        if showOverlay then
+                            SendNUIMessage({
+                                type = 'toggleGif',
+                                location = pluginConfig.overlayLocation
+                            })
                         end
                         TriggerServerEvent('SonoranCAD::core::bodyCamOff')
                         TriggerEvent('chat:addMessage',
@@ -185,13 +184,11 @@ CreateThread(function()
                         PlayBeepSound()
                     else
                         isOn = true
-                        if pluginConfig.enableOverlay then
-                            if showOverlay then
-                                SendNUIMessage({
-                                    type = 'toggleGif',
-                                    location = pluginConfig.overlayLocation
-                                })
-                            end
+                        if showOverlay then
+                            SendNUIMessage({
+                                type = 'toggleGif',
+                                location = pluginConfig.overlayLocation
+                            })
                         end
                         TriggerEvent('chat:addMessage',
                             { args = { 'Sonoran Bodycam', 'Bodycam enabled' } })
@@ -244,13 +241,13 @@ CreateThread(function()
                         doAnimation = true
                     end
                     TriggerEvent('chat:addMessage',
-                    { args = { 'Sonoran Bodycam', ('Animations set to %s'):format(doAnimation) } })
+                        { args = { 'Sonoran Bodycam', ('Animations set to %s'):format(doAnimation) } })
                 end)
                 RegisterNetEvent('SonoranCAD::bodycam::ToggleOverlay', function()
                     if showOverlay then
-                        showOverlay=false
+                        showOverlay = false
                     else
-                        showOverlay=true
+                        showOverlay = true
                     end
                     if isOn then
                         SendNUIMessage({
@@ -259,7 +256,7 @@ CreateThread(function()
                         })
                     end
                     TriggerEvent('chat:addMessage',
-                    { args = { 'Sonoran Bodycam', ('Overlay set to %s'):format(showOverlay) } })
+                        { args = { 'Sonoran Bodycam', ('Overlay set to %s'):format(showOverlay) } })
                 end)
             end)
         end
