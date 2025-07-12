@@ -154,7 +154,7 @@ CreateThread(function()
 
 
                 RegisterNetEvent('SonoranCAD::bodycam::Toggle', function(manualActivation)
-                    if pluginConfig.enableWhitelist and not IsWearingBodycam() then
+                    if pluginConfig.enableClothingWhitelist and not IsWearingBodycam() then
                         TriggerEvent('chat:addMessage',
                             { args = { 'Sonoran Bodycam', 'You must be wearing a bodycam to activate it.' } })
                         return
