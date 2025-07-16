@@ -62,19 +62,40 @@ local config = {
     -- Automaticlly enable bodycam when a weapon is drawn.
     autoEnableWithWeapons = true,
 
-    -- Enable Clothing / Ped whitelist for bodycams.
-    enableClothingWhitelist = false,
-
-    -- Clothing / Peds that have bodycams.
-    clothing = {
-        { ped = "mp_m_freemode_01" },
+    --[[
+        If you want to use ped/clothing based bodycams, you can add them here.
+ 
+        Examples:
+        { ped = "s_m_y_cop_01" }
+        {
+            ped = "mp_f_freemode_01",
+            component = 8,
+            drawable = 148,
+        }
         {
             ped = "mp_m_freemode_01",
-            component=8,
-            drawable=148,
-            texture={2,4}
+            component = 8,
+            drawable = 148,
+            textures = {2, 4},
         }
-    },
+        
+        ----
+        
+        Components:
+            0  - Head
+            1  - Beard
+            2  - Hair
+            3  - Torso
+            4  - Legs
+            5  - Hands
+            6  - Foot
+            7  - Scarfs/Neck Accessories
+            8  - Accessories 1
+            9  - Accessories 2
+            10 - Decals
+            11 - Auxiliary parts for torso
+    ]]
+    clothing = {},
 
     -- Weapons that when drawn enable bodycam.
     weapons = {

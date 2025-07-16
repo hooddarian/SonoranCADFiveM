@@ -21,9 +21,9 @@ CreateThread(function()
                         if item.component and item.drawable then
                             local compDrawable = GetPedDrawableVariation(ped, item.component)
                             if compDrawable == item.drawable then
-                                if item.texture then
+                                if item.textures then
                                     local compTexture = GetPedTextureVariation(ped, item.component)
-                                    for _, tex in ipairs(item.texture) do
+                                    for _, tex in ipairs(item.textures) do
                                         if compTexture == tex then
                                             return true
                                         end
@@ -144,7 +144,7 @@ CreateThread(function()
 
 
                 RegisterNetEvent('SonoranCAD::bodycam::Toggle', function(manualActivation)
-                    if pluginConfig.enableClothingWhitelist and not IsWearingBodycam() then
+                    if not IsWearingBodycam() then
                         if manualActivation then
                             TriggerEvent('chat:addMessage',
                                 { args = { 'Sonoran Bodycam', 'You must be wearing a bodycam to activate it.' } })
