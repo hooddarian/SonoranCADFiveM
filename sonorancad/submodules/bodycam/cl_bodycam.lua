@@ -104,7 +104,7 @@ CreateThread(function()
                 while true do
                     Wait(1)
                     if isOn then
-                        TriggerServerEvent('SonoranCAD::bodycam::TakeScreenshot')
+                        TriggerServerEvent('SonoranCAD::core:TakeScreenshot')
                         Wait(screenshotFrequency)
                     end
                 end
