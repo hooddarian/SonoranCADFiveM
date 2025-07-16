@@ -78,7 +78,108 @@ local config = {
 
     -- Weapons that when drawn enable bodycam.
     weapons = {
-        "weapon_pistol"
+        -- Heavy
+        "weapon_snowlauncher"
+        ,"weapon_compactlauncher"
+        ,"weapon_minigun"
+        ,"weapon_grenadelauncher_smoke"
+        ,"weapon_hominglauncher"
+        ,"weapon_railgun"
+        ,"weapon_firework"
+        ,"weapon_grenadelauncher"
+        ,"weapon_rpg"
+        ,"weapon_rayminigun"
+        ,"weapon_emplauncher"
+        ,"weapon_railgunxm3"
+
+        -- Shotguns
+        ,"weapon_combatshotgun"
+        ,"weapon_autoshotgun"
+        ,"weapon_pumpshotgun"
+        ,"weapon_heavyshotgun"
+        ,"weapon_pumpshotgun_mk2"
+        ,"weapon_sawnoffshotgun"
+        ,"weapon_bullpupshotgun"
+        ,"weapon_assaultshotgun"
+        ,"weapon_dbshotgun"
+
+        -- Snipers
+        ,"weapon_heavysniper"
+        ,"weapon_marksmanrifle_mk2"
+        ,"weapon_precisionrifle"
+        ,"weapon_musket"
+        ,"weapon_marksmanrifle"
+
+        -- Thrown
+        ,"weapon_snowball"
+        ,"weapon_ball"
+        ,"weapon_molotov"
+        ,"weapon_stickybomb"
+        ,"weapon_flare"
+        ,"weapon_grenade"
+        ,"weapon_bzgas"
+        ,"weapon_proxmine"
+        ,"weapon_pipebomb"
+        ,"weapon_acidpackage"
+        ,"weapon_smokegrenade"
+
+        -- Pistols
+        ,"weapon_vintagepistol"
+        ,"weapon_pistol"
+        ,"weapon_pistolxm3"
+        ,"weapon_appistol"
+        ,"weapon_ceramicpistol"
+        ,"weapon_flaregun"
+        ,"weapon_gadgetpistol"
+        ,"weapon_combatpistol"
+        ,"weapon_snspistol_mk2"
+        ,"weapon_navyrevolver"
+        ,"weapon_doubleaction"
+        ,"weapon_pistol50"
+        ,"weapon_raypistol"
+        ,"weapon_snspistol"
+        ,"weapon_pistol_mk2"
+        ,"weapon_revolver"
+        ,"weapon_revolver_mk2"
+        ,"weapon_heavypistol"
+        ,"weapon_marksmanpistol"
+
+        ,"weapon_stungun"
+        ,"weapon_stungun_mp"
+
+        -- SMGs
+        ,"weapon_combatpdw"
+        ,"weapon_microsmg"
+        ,"weapon_tecpistol"
+        ,"weapon_smg"
+        ,"weapon_smg_mk2"
+        ,"weapon_minismg"
+        ,"weapon_machinepistol"
+        ,"weapon_assaultsmg"
+
+        -- Rifles
+        ,"weapon_assaultrifle_mk2"
+        ,"weapon_compactrifle"
+        ,"weapon_battlerifle"
+        ,"weapon_bullpuprifle"
+        ,"weapon_carbinerifle"
+        ,"weapon_bullpuprifle_mk2"
+        ,"weapon_specialcarbine_mk2"
+        ,"weapon_militaryrifle"
+        ,"weapon_advancedrifle"
+        ,"weapon_assaultrifle"
+        ,"weapon_specialcarbine"
+        ,"weapon_heavyrifle"
+        ,"weapon_tacticalrifle"
+        ,"weapon_carbinerifle_mk2"
+
+        -- MGs
+        ,"weapon_raycarbine"
+        ,"weapon_gusenberg"
+        ,"weapon_combatmg"
+        ,"weapon_mg"
+        ,"weapon_combatmg_mk2"
+
     }
 }
 if config.enabled then Config.RegisterPluginConfig(config.pluginName, config) end
