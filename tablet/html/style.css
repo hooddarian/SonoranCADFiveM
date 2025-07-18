@@ -178,11 +178,21 @@ a:hover {
 	padding: 4px 8px;
 	border-radius: 4px;
 	font-size: 12px;
+	max-width: 60px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: inline-block;
 }
 
 #hudHeaderTime {
 	font-weight: 500;
 	color: #b0b0b0;
+	max-width: 120px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: inline-block;
 }
 
 #hudHeaderControls {
@@ -224,6 +234,11 @@ a:hover {
 	font-weight: 700;
 	margin-bottom: 6px;
 	letter-spacing: 0.3px;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: block;
 }
 
 #hudFrame #hudContent #callTitle {
@@ -306,6 +321,11 @@ a:hover {
 	font-weight: 500;
 	font-size: 12px;
 	background: #404040;
+	max-width: 60px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: inline-block;
 }
 
 #hudFrame #hudFooter a:hover {
@@ -370,6 +390,9 @@ a:hover {
 	word-wrap: break-word;
 	overflow-wrap: break-word;
 	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 #hudDetails #callNotes {
@@ -389,6 +412,9 @@ a:hover {
 	word-wrap: break-word;
 	overflow-wrap: break-word;
 	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 #hudDetails #callNotes span:last-child {
@@ -416,6 +442,8 @@ a:hover {
 	padding: 6px 10px;
 	transition: all 0.2s ease;
 	font-size: 13px;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 #hudInput input:focus {
