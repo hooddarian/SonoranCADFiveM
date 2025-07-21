@@ -162,7 +162,7 @@ CreateThread(function()
                         Wait(1880)
                     end
 
-                    if not toggle then
+                    if not toggle and bodyCamOn then
                         bodyCamOn = false
                         if showOverlay then
                             SendNUIMessage({
@@ -174,7 +174,7 @@ CreateThread(function()
                         TriggerEvent('chat:addMessage',
                             { args = { 'Sonoran Bodycam', 'Bodycam disabled' } })
                         PlayBeepSound()
-                    else
+                    elseif toggle and not bodyCamOn then
                         bodyCamOn = true
                         if showOverlay then
                             SendNUIMessage({
