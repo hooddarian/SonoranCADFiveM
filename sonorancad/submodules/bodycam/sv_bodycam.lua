@@ -23,7 +23,7 @@ CreateThread(function()
                     return
                 end
                 if #args == 0 then
-                    TriggerClientEvent('SonoranCAD::bodycam::Toggle', source, true)
+                    TriggerClientEvent('SonoranCAD::bodycam::CommandToggle', source)
                 end
                 if args[1] == 'freq' then
                     TriggerClientEvent('SonoranCAD::bodycam::SetScreenshotFrequency', source, args[2])
@@ -69,7 +69,11 @@ CreateThread(function()
             RegisterNetEvent('SonoranCAD::bodycam::RequestToggle', function(manualActivation, toggle)
                 if pluginConfig.requireUnitDuty then
                     local unit = GetUnitByPlayerId(source)
-                    if unit == nil and toggle then
+                    if not toggle then
+                        TriggerClientEvent('SonoranCAD::bodycam::Toggle', source, manualActivation, false)
+                        return
+                    end
+                    if unit == nil then
                         if manualActivation then
                             TriggerClientEvent('chat:addMessage', source, {
                                 args = {
