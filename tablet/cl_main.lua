@@ -155,7 +155,7 @@ end
 -- Remove NUI focus
 RegisterNUICallback('NUIFocusOff', function()
 	DisplayModule("cad", false)
-	SetTablet(false)
+	toggleTabletDisplay(false)
 	SetFocused(false)
 end)
 
@@ -246,7 +246,7 @@ TriggerEvent('chat:addSuggestion', '/minicadrows', "Specify max number of call n
 -- CAD Module Commands
 RegisterCommand("showcad", function(source, args, rawCommand)
 	DisplayModule("cad", true)
-	SetTablet(true)
+	toggleTabletDisplay(true)
 	SetFocused(true)
 end, false)
 RegisterKeyMapping('showcad', 'CAD Tablet', 'keyboard', '')
@@ -266,29 +266,58 @@ RegisterCommand("checkapiid", function(source,args,rawCommand)
 	TriggerServerEvent("sonoran:tablet:forceCheckApiId")
 end, false)
 
--- This function will eventually be expanded to multiple items.
-function SetTablet(using)
-	if using then
-		-- Take out the tablet.
-		RequestAnimDict("amb@code_human_in_bus_passenger_idles@female@tablet@base")
-		while not HasAnimDictLoaded("amb@code_human_in_bus_passenger_idles@female@tablet@base") do
-				Citizen.Wait(0)
-		end
-		local tabletModel = GetHashKey("prop_cs_tablet")
-		local bone = GetPedBoneIndex(GetPlayerPed(-1), 60309)
-		RequestModel(tabletModel)
-		while not HasModelLoaded(tabletModel) do
-				Citizen.Wait(100)
-		end
-		tabletProp = CreateObject(tabletModel, 1.0, 1.0, 1.0, 1, 1, 0)
-		AttachEntityToEntity(tabletProp, GetPlayerPed(-1), bone, 0.03, 0.002, -0.0, 10.0, 160.0, 0.0, 1, 0, 0, 0, 2, 1)
-		TaskPlayAnim(GetPlayerPed(-1), "amb@code_human_in_bus_passenger_idles@female@tablet@base", "base", 3.0, 3.0, -1, 49, 0, 0, 0, 0)
-	else
-		-- Put the tablet away.
-		DetachEntity(tabletProp, true, true)
-		DeleteObject(tabletProp)
-		TaskPlayAnim(GetPlayerPed(-1), "amb@code_human_in_bus_passenger_idles@female@tablet@base", "exit", 3.0, 3.0, -1, 49, 0, 0, 0, 0)
-	end
+local activeTablet = nil
+
+-- Helper to load an animation dictionary
+local function ensureAnimDict(dictName)
+    RequestAnimDict(dictName)
+    while not HasAnimDictLoaded(dictName) do
+        Citizen.Wait(0)
+    end
+end
+
+-- Helper to load a model by hash
+local function ensureModel(modelHash)
+    RequestModel(modelHash)
+    while not HasModelLoaded(modelHash) do
+        Citizen.Wait(100)
+    end
+end
+
+function toggleTabletDisplay(enable)
+    local ped      = PlayerPedId()
+    local animDict = "amb@code_human_in_bus_passenger_idles@female@tablet@base"
+    local enter    = "base"
+    local exit     = "exit"
+    local model    = GetHashKey("prop_cs_tablet")
+    local bone     = GetPedBoneIndex(ped, 60309)
+
+    if enable then
+        -- pull out tablet
+        ensureAnimDict(animDict)
+        ensureModel(model)
+
+        activeTablet = CreateObject(model, 1.0, 1.0, 1.0, true, true, false)
+        AttachEntityToEntity(
+            activeTablet,
+            ped,
+            bone,
+            0.03, 0.002, 0.0,    -- position offsets
+            10.0, 160.0, 0.0,    -- rotation offsets
+            false, false, false, -- collision, vertex, etc.
+            false, 2, true       -- isNetworked, boneIndex, useSoftPinning
+        )
+
+        TaskPlayAnim(ped, animDict, enter, 3.0, 3.0, -1, 49, 0, false, false, false)
+    else
+        -- put tablet away
+        if activeTablet then
+            DetachEntity(activeTablet, true, true)
+            DeleteObject(activeTablet)
+            activeTablet = nil
+        end
+        TaskPlayAnim(ped, animDict, exit, 3.0, 3.0, -1, 49, 0, false, false, false)
+    end
 end
 
 -- Mini-Cad Callbacks
