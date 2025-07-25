@@ -338,8 +338,8 @@ AddEventHandler('onClientResourceStart', function(resourceName) --When resource 
 	TriggerServerEvent("sonoran:tablet:forceCheckApiId")
 end)
 
-RegisterNetEvent("sonoran:tablet:apiIdNotFound")
-AddEventHandler('sonoran:tablet:apiIdNotFound', function()
+RegisterNetEvent("SonoranCAD::Tablet::ApiIdNotLinked")
+AddEventHandler('SonoranCAD::Tablet::ApiIdNotLinked', function()
 	SendNUIMessage({
 		type = "regbar"
 	})
@@ -350,8 +350,8 @@ AddEventHandler("sonoran:tablet:apiIdFound", function()
 	isRegistered = true
 end)
 
-RegisterNUICallback('SetAPIData', function(data,cb)
-	TriggerServerEvent("sonoran:tablet:setApiId", data.session, data.username)
+RegisterNUICallback('SetAPIInformation', function(data,cb)
+	TriggerServerEvent("SonoranCAD::Tablet::SetApiData", data.session, data.username)
 	TriggerServerEvent("sonoran:tablet:forceCheckApiId")
 	cb(true)
 end)

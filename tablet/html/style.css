@@ -20,7 +20,7 @@
 	margin-top: 10%;
 	border: 5px;
 	border-color: yellow
-	
+
 }
 #blackbar {
 	background-color: #333;
@@ -28,10 +28,10 @@
 	width: 1100px;
 	color: white;
 	font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-	
+
 }
 
-#check-api-data {
+#check-api-id {
 	background-color: #e00000;
 	font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
 	color: white;
