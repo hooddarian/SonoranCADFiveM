@@ -1,4 +1,4 @@
-var isApiBeingChecked = false;
+var currentlyCheckingApi = false;
 
 var myident = null;
 
@@ -207,8 +207,8 @@ $(function () {
 		if (event.data.type == "display") {
 			moduleVisible(event.data.module, event.data.enabled)
 			if (event.data.apiCheck) {
-				isApiBeingChecked = true;
-				//$("#check-api-data").show();
+				currentlyCheckingApi = true;
+				//$("#check-api-id").show();
 			}
 			setHotkeys(event.data.keyMap);
 		}
@@ -269,8 +269,8 @@ $(function () {
 			}
 		}
 		else if (event.data.type == "regbar") {
-			isApiBeingChecked = true;
-			$("#check-api-data").show();
+			currentlyCheckingApi = true;
+			$("#check-api-id").show();
 		}
 		else if (event.data.type == "resize") {
 			if (event.data.module == "cad") {
@@ -318,11 +318,54 @@ $(function () {
 	dragElement(document.getElementById("cadDiv"));
 	dragElement(document.getElementById("hudDiv"));
 
+	document.addEventListener('mousedown', function(e) {
+		const draggingElements = document.querySelectorAll('.dragging');
+		if (draggingElements.length > 0) {
+			const cadFrame = document.getElementById('cadFrame');
+			if (cadFrame && (cadFrame === e.target || cadFrame.contains(e.target))) {
+				e.preventDefault();
+				e.stopPropagation();
+				return false;
+			}
+		}
+	}, true);
+	
+	document.addEventListener('mouseover', function(e) {
+		const draggingElements = document.querySelectorAll('.dragging');
+		if (draggingElements.length > 0) {
+			const cadFrame = document.getElementById('cadFrame');
+			if (cadFrame && (cadFrame === e.target || cadFrame.contains(e.target))) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		}
+	}, true);
+
 	window.addEventListener("message", receiveMessage, false);
+	
+	window.addEventListener('blur', function() {
+		const draggingElements = document.querySelectorAll('.dragging');
+		if (draggingElements.length > 0) {
+			draggingElements.forEach(function(element) {
+				element.classList.remove('dragging');
+			});
+			const overlay = document.getElementById('dragOverlay');
+			if (overlay) {
+				overlay.parentNode.removeChild(overlay);
+			}
+			const cadFrame = document.getElementById('cadFrame');
+			if (cadFrame) {
+				cadFrame.style.pointerEvents = 'auto';
+			}
+		}
+	});
 });
 
 function dragElement(elmnt) {
 	var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+	var isDragging = false;
+	var dragOverlay = null;
+	
 	if (document.getElementById(elmnt.id + "header")) {
 		// if present, the header is where you move the DIV from:
 		document.getElementById(elmnt.id + "header").onmousedown = dragMouseDown;
@@ -334,9 +377,17 @@ function dragElement(elmnt) {
 	function dragMouseDown(e) {
 		e = e || window.event;
 		e.preventDefault();
+		e.stopPropagation();
+		
 		// get the mouse cursor position at startup:
 		pos3 = e.clientX;
 		pos4 = e.clientY;
+		isDragging = true;
+		
+		elmnt.classList.add('dragging');
+		
+		createDragOverlay();
+		
 		document.onmouseup = closeDragElement;
 		// call a function whenever the cursor moves:
 		document.onmousemove = elementDrag;
@@ -345,6 +396,10 @@ function dragElement(elmnt) {
 	function elementDrag(e) {
 		e = e || window.event;
 		e.preventDefault();
+		e.stopPropagation();
+		
+		if (!isDragging) return;
+		
 		// calculate the new cursor position:
 		pos1 = pos3 - e.clientX;
 		pos2 = pos4 - e.clientY;
@@ -357,8 +412,48 @@ function dragElement(elmnt) {
 
 	function closeDragElement() {
 		// stop moving when mouse button is released:
+		isDragging = false;
+		elmnt.classList.remove('dragging');
+		removeDragOverlay();
 		document.onmouseup = null;
 		document.onmousemove = null;
+	}
+	
+	function createDragOverlay() {
+		removeDragOverlay();
+		
+		dragOverlay = document.createElement('div');
+		dragOverlay.id = 'dragOverlay';
+		dragOverlay.style.cssText = `
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: transparent;
+			z-index: 9998;
+			pointer-events: none;
+		`;
+		document.body.appendChild(dragOverlay);
+		
+		const cadFrame = document.getElementById('cadFrame');
+		if (cadFrame) {
+			cadFrame.style.pointerEvents = 'none';
+		}
+	}
+	
+	function removeDragOverlay() {
+		if (dragOverlay) {
+			if (dragOverlay.parentNode) {
+				dragOverlay.parentNode.removeChild(dragOverlay);
+			}
+			dragOverlay = null;
+		}
+		
+		const cadFrame = document.getElementById('cadFrame');
+		if (cadFrame) {
+			cadFrame.style.pointerEvents = 'auto';
+		}
 	}
 }
 
@@ -367,9 +462,9 @@ function receiveMessage(event) {
 	let cadframe = document.getElementById("cadFrame");
 	let frameorigin = new URL(cadframe.src).origin;
 
-	if (isApiBeingChecked && event.origin == frameorigin) {
-		$.post('https://tablet/SetAPIData', JSON.stringify(event.data));
-		$("#check-api-data").hide();
+	if (currentlyCheckingApi && event.origin == frameorigin) {
+		$.post('https://tablet/SetAPIInformation', JSON.stringify(event.data));
+		$("#check-api-id").hide();
 	}
 }
 
@@ -378,8 +473,12 @@ function addCallNote(call, data) {
 }
 
 function runApiCheck() {
-	isApiBeingChecked = true;
+	currentlyCheckingApi = true;
 	document.getElementById("cadFrame").src += '';
 	$.post('https://tablet/runApiCheck');
 	$("#check-api-data").hide();
 }
+
+document.getElementById('homeButton').addEventListener('click', function() {
+	$.post('https://tablet/NUIFocusOff', JSON.stringify({}));
+});
