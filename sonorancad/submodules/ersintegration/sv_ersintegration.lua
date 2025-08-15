@@ -11,8 +11,8 @@ local postalConfig = Config.GetPluginConfig("postals")
 if pluginConfig.enabled then
     function startErs()
         debugLog("Starting ERS Integration...")
-        RegisterNetEvent('SonoranCAD::ErsIntegration::CalloutOffered')
-        RegisterNetEvent('SonoranCAD::ErsIntegration::CalloutAccepted')
+        RegisterNetEvent('ErsIntegration::OnIsOfferedCallout')
+        RegisterNetEvent('ErsIntegration::OnAcceptedCalloutOffer')
         RegisterNetEvent('SonoranCAD::ErsIntegration::BuildChars')
         RegisterNetEvent('SonoranCAD::ErsIntegration::BuildVehs')
         registerApiType('SET_AVAILABLE_CALLOUTS', 'emergency')
@@ -182,7 +182,7 @@ if pluginConfig.enabled then
             911 CALL CREATION
         ]]
         if pluginConfig.create911Call then
-            AddEventHandler('SonoranCAD::ErsIntegration::CalloutOffered', function(calloutData)
+            AddEventHandler('ErsIntegration::OnIsOfferedCallout', function(calloutData)
                 local uniqueKey = generateUniqueCalloutKey(calloutData)
                 debugLog('Generated unqiue key for callout: '.. uniqueKey)
                 if pluginConfig.clearRecordsAfter ~= 0 and processedCalloutOffered[uniqueKey] then
@@ -245,7 +245,7 @@ if pluginConfig.enabled then
             EMERGENCY CALL CREATION
         ]]
         if pluginConfig.createEmergencyCall then
-            AddEventHandler('SonoranCAD::ErsIntegration::CalloutAccepted', function(calloutData)
+            AddEventHandler('ErsIntegration::OnAcceptedCalloutOffer', function(calloutData)
                 local uniqueKey = generateUniqueCalloutKey(calloutData)
                 if pluginConfig.clearRecordsAfter ~= 0 and processedCalloutAccepted[uniqueKey] then
                     local entry   = processedCalloutAccepted[uniqueKey]
