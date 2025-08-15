@@ -69,7 +69,7 @@ CreateThread(function()
             RegisterKeyMapping('SonoranCAD::bodycam::Keybind', "Toggle BodyCam", "keyboard", pluginConfig.defaultKeybind)
             CreateThread(function()
                 while pluginConfig.autoEnableWithWeapons do
-                    Wait(1)
+                    Wait(200)
                     local ped = PlayerPedId()
                     local weapon = GetSelectedPedWeapon(ped)
                     if not bodyCamOn and pluginConfig.weapons then
@@ -85,7 +85,7 @@ CreateThread(function()
 
             CreateThread(function()
                 while pluginConfig.autoEnableWithLights do
-                    Wait(1)
+                    Wait(200)
                     local ped = PlayerPedId()
                     local veh = GetVehiclePedIsIn(ped, false)
                     -- Only check if player is in a vehicle and is the driver
