@@ -143,8 +143,11 @@ Citizen.CreateThread(function()
     while Config.apiVersion == -1 do
         Wait(1000)
     end
-    if not Config.apiSendEnabled or (Config.noUnitTimer == "true" or Config.noUnitTimer == true) or Config.apiVersion < 3 then
+    if (Config.noUnitTimer == "true" or Config.noUnitTimer == true) or Config.apiVersion < 3 then
         debugLog("Disabling active units routine")
+        return
+    elseif not Config.apiSendEnabled then
+        errorLog("Config.apiSendEnabled disabled via convar or config, skipping unit caching. Check your config if this is unintentional.")
         return
     end
     while true do
@@ -200,8 +203,11 @@ CreateThread(function()
     while Config.apiVersion == -1 do
         Wait(10)
     end
-    if not Config.apiSendEnabled or Config.apiVersion < 3 then
+    if Config.apiVersion < 3 then
         debugLog("Too low version or API disabled, skip call caching")
+        return
+    elseif not Config.apiSendEnabled then
+        errorLog("Config.apiSendEnabled disabled via convar or config, skipping call caching. Check your config if this is unintentional.")
         return
     end
     local payload = { serverId = Config.serverId}

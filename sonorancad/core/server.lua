@@ -62,6 +62,11 @@ end)
 RegisterServerEvent("cadToggleApi")
 AddEventHandler("cadToggleApi", function()
     Config.apiSendEnabled = not Config.apiSendEnabled
+    if Config.apiSendEnabled then
+        infoLog("API sending has been enabled.")
+    else
+        errorLog("API sending has been disabled via cadToggleApi... please contact support for more help")
+    end
 end)
 
 --[[
@@ -142,7 +147,7 @@ function performApiRequest(postData, type, cb)
     if Config.critError then
         return
     elseif not Config.apiSendEnabled then
-        warnLog("API sending is disabled, ignoring request.")
+        errorLog("Config.apiSendEnabled disabled via convar or config, skipping API request. Check your config if this is unintentional.")
         return
     end
     if rateLimitedEndpoints[type] == nil then

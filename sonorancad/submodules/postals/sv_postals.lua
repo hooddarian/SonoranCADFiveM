@@ -83,8 +83,10 @@ CreateThread(function()
 				while Config.apiVersion == -1 or postals == nil do
 					Wait(1000)
 				end
-				if Config.apiVersion < 4 or not Config.apiSendEnabled then
+				if Config.apiVersion < 4 then
 					return
+				elseif not Config.apiSendEnabled then
+					errorLog('Config.apiSendEnabled disabled via convar or config, skipping postal sending. Check your config if this is unintentional.')
 				end
 				performApiRequest(postalFile, 'SET_POSTALS', function()
 				end)

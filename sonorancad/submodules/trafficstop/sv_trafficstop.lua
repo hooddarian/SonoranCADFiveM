@@ -87,7 +87,7 @@ if pluginConfig.enabled then
             debugLog("sending Traffic Stop!")
             performApiRequest({data}, 'NEW_DISPATCH', function() end)
         else
-            debugLog("[SonoranCAD] API sending is disabled. Traffic Stop ignored.")
+            errorLog("Config.apiSendEnabled disabled via convar or config, skipping call creation. Check your config if this is unintentional.")
         end
     end)
 
