@@ -1,6 +1,24 @@
 CreateThread(function()
     Config.LoadPlugin("bodycam", function(pluginConfig)
         if pluginConfig.enabled then
+            CreateThread(function()
+                -- attempt to fetch web_baseUrl
+                local baseUrl = ''
+                local counter = 0
+                while baseUrl == '' do
+                    Wait(1000)
+                    baseUrl = GetConvar('web_baseUrl', '')
+
+                    -- Every 60 seconds, log a warning
+                    counter = counter + 1
+                    if counter % 60 == 0 then
+                        warnLog('Still waiting for web_baseUrl convar to be set...bodycam will not work until this is set.')
+                    end
+                end
+                Config.proxyUrl = ('https://%s/sonorancad/'):format(GetConvar('web_baseUrl',''))
+                debugLog(('Set proxyUrl to %s'):format(Config.proxyUrl))
+                TriggerClientEvent('SonoranCAD::bodycam::Init', -1, 1, Config.apiVersion)
+            end)
             RegisterCommand(pluginConfig.command, function(source, args, rawCommand)
                 if Config.apiVersion < 4 then
                     errorLog('Bodycam is only enabled with SonoranCAD Pro.')

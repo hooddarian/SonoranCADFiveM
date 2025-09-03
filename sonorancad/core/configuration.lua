@@ -513,34 +513,6 @@ CreateThread(function()
 end)
 
 CreateThread(function()
-    -- attempt to fetch web_baseUrl
-    local baseUrl = ''
-    local counter = 0
-    if Config.bodycamEnabled then
-        local counter = 0
-        while baseUrl == '' do
-            Wait(1000)
-            baseUrl = GetConvar('web_baseUrl', '')
-
-            -- Every 60 seconds, log a warning
-            counter = counter + 1
-            if counter % 60 == 0 then
-                warnLog('Still waiting for web_baseUrl convar to be set...bodycam will not work until this is set.')
-            end
-        end
-    else
-        -- Run the loop once
-        baseUrl = GetConvar('web_baseUrl', '')
-        if baseUrl == '' then
-            warnLog('Bodycam is disabled and web_baseUrl is not set. Skipping loop.')
-        end
-    end
-    Config.proxyUrl = ('https://%s/sonorancad/'):format(GetConvar('web_baseUrl',''))
-    debugLog(('Set proxyUrl to %s'):format(Config.proxyUrl))
-    TriggerClientEvent('SonoranCAD::bodycam::Init', -1, 1, Config.apiVersion)
-end)
-
-CreateThread(function()
     while Config.apiVersion == -1 do Wait(100) end
     if Config.critError then return end
     if isPluginLoaded('wraithv2') then
