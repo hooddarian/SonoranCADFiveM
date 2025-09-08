@@ -203,7 +203,7 @@
                             end
                         end)
                     else
-                        debugLog("[SonoranCAD] API sending is disabled. Incoming call ignored.")
+                        errorLog("Config.apiSendEnabled disabled via convar or config, skipping call creation. Check your config if this is unintentional.")
                     end
                 end)
 
