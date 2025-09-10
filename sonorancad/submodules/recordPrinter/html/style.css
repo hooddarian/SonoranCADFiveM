@@ -1,0 +1,20 @@
+body{
+    display: none;
+    position:absolute;
+    width: auto;
+    height:400px;
+    bottom: 1px;
+    right: 1%;
+    padding: none;
+    margin: 0;
+}
+
+html{
+    padding:none;
+    margin: 0;
+}
+
+img{
+    width: auto;
+    height: 85%;
+}
