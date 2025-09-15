@@ -3,7 +3,7 @@
 
     Plugin Name: ersintegration
     Creator: Sonoran Software
-    Description: Integrates Knight ERS callouts to SonoranCAD
+    Description: Integrates SonoranCAD PDFs in-game.
 ]]
 CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig)
     local printQueue = {}
