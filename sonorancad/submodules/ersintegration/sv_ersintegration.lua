@@ -322,7 +322,7 @@ if pluginConfig.enabled then
                             -- Save the callId in the processedCalloutOffered table using the unique key
                             processedCalloutAccepted[uniqueKey] = {id = callId, timestamp = os.time()}
                             if processedCalloutOffered[uniqueKey] ~= nil then
-                                local payload = { serverId = Config.serverId, callId = processedCalloutOffered[uniqueKey]}
+                                local payload = { serverId = Config.serverId, callId = processedCalloutOffered[uniqueKey].id}
                                 performApiRequest({payload}, "REMOVE_911", function(resp)
                                     debugLog("Remove status: "..tostring(resp))
                                 end)
