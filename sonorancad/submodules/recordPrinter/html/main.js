@@ -1,166 +1,321 @@
-var pdfLink = '';
+var pdfLink = "";
 var firstView = false;
 var isOpen = false;
 var isMinimized = false;
 var isFullscreen = false;
 
 $(function () {
-  var $wrapper = $('#wrapper');
-  var $pdfWindow = $('#pdfWindow');
-  var $pdfFrame = $('#pdfFrame');
-  var $statusText = $('#statusText');
-  var $minimizeBtn = $('#minimizeBtn');
-  var $fullscreenBtn = $('#fullscreenBtn');
-  var $closeBtn = $('#closeBtn');
+	var $wrapper = $("#wrapper");
+	var $pdfWindow = $("#pdfWindow");
+	var $pdfViewer = $("#pdfViewer");
+	var $statusText = $("#statusText");
+	var $minimizeBtn = $("#minimizeBtn");
+	var $fullscreenBtn = $("#fullscreenBtn");
+	var $closeBtn = $("#closeBtn");
+	var pdfRenderToken = 0;
+	var pdfLoadingTask = null;
 
-  function updateStatusText() {
-    if (!isOpen) {
-      $statusText.text('');
-      return;
-    }
+	function clearPdfViewer(message, isError) {
+		$pdfViewer.empty();
+		var $message = $("<div>")
+			.addClass(isError ? "pdf-error" : "pdf-placeholder")
+			.text(message || "No record selected.");
+		$pdfViewer.append($message);
+	}
 
-    if (isMinimized) {
-      $statusText.text('Press Backspace to restore.');
-    } else if (isFullscreen) {
-      $statusText.text('Scroll to view the record. Backspace to minimize, ESC to close.');
-    } else {
-      $statusText.text('Press Backspace to minimize, ESC to close.');
-    }
-  }
+	function cancelCurrentRender() {
+		if (pdfLoadingTask && typeof pdfLoadingTask.destroy === "function") {
+			try {
+				pdfLoadingTask.destroy();
+			} catch (err) {
+				console.warn("recordPrinter: failed to cancel existing PDF task:", err);
+			}
+		}
+		pdfLoadingTask = null;
+	}
 
-  function applyWindowState() {
-    var shouldFullscreen = isFullscreen && !isMinimized;
-    $pdfWindow.toggleClass('minimized', isMinimized);
-    $pdfWindow.toggleClass('fullscreen', shouldFullscreen);
+	function renderDocumentPages(pdf, token) {
+		var renderPromise = Promise.resolve();
 
-    $minimizeBtn.text(isMinimized ? 'Restore' : 'Min');
-    $minimizeBtn.attr('title', isMinimized ? 'Restore' : 'Minimize');
-    $fullscreenBtn.text(shouldFullscreen ? 'Exit Full' : 'Full');
-    $fullscreenBtn.attr('title', shouldFullscreen ? 'Exit Fullscreen' : 'Toggle Fullscreen');
+		function renderPage(pageNumber) {
+			if (token !== pdfRenderToken) {
+				return Promise.resolve();
+			}
 
-    updateStatusText();
-  }
+			return pdf.getPage(pageNumber).then(function (page) {
+				if (token !== pdfRenderToken) {
+					return;
+				}
 
-  function openUI(link, firstFlag) {
-    if (link) {
-      pdfLink = link;
-      $pdfFrame.attr('src', link);
-    }
-    firstView = !!firstFlag;
-    isOpen = true;
-    isMinimized = false;
-    isFullscreen = false;
+				var containerWidth = $pdfViewer.innerWidth() || 600;
+				var baseViewport = page.getViewport({ scale: 1 });
+				var scale = Math.min(Math.max(containerWidth / baseViewport.width, 0.9), 2.4);
+				var viewport = page.getViewport({ scale: scale });
 
-    applyWindowState();
+				var $pageWrapper = $("<div>").addClass("pdf-page");
+				var canvas = document.createElement("canvas");
+				canvas.className = "pdf-canvas";
+				canvas.width = viewport.width;
+				canvas.height = viewport.height;
+				$pageWrapper.append(canvas);
+				$pdfViewer.append($pageWrapper);
 
-    $wrapper.removeClass('hidden');
-    $wrapper.stop(true, true).fadeIn(120);
-  }
+				var context = canvas.getContext("2d", { alpha: false });
+				return page
+					.render({ canvasContext: context, viewport: viewport })
+					.promise.catch(function (err) {
+						console.error("recordPrinter: failed to render page", pageNumber, err);
+						if (token === pdfRenderToken) {
+							$pageWrapper.empty().append(
+								$("<div>")
+									.addClass("pdf-error")
+									.text("Unable to render page " + pageNumber + ".")
+							);
+						}
+					});
+			});
+		}
 
-  function closeUI(sendMessage) {
-    if (!isOpen) {
-      return;
-    }
+		for (var pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+			(function (number) {
+				renderPromise = renderPromise.then(function () {
+					return renderPage(number);
+				});
+			})(pageNum);
+		}
 
-    isOpen = false;
-    isMinimized = false;
-    isFullscreen = false;
+		return renderPromise
+			.then(function () {
+				if (token === pdfRenderToken) {
+					$pdfViewer.scrollTop(0);
+				}
+			})
+			.finally(function () {
+				try {
+					pdf.cleanup();
+				} catch (cleanupErr) {
+					console.warn("recordPrinter: cleanup warning", cleanupErr);
+				}
+				return pdf.destroy();
+			});
+	}
 
-    $wrapper.stop(true, true).fadeOut(120, function () {
-      $pdfFrame.attr('src', '');
-      $wrapper.addClass('hidden');
-      updateStatusText();
-    });
+	function updateStatusText() {
+		if (!isOpen) {
+			$statusText.text("");
+			return;
+		}
 
-    if (sendMessage !== false) {
-      $.post('https://sonorancad/CloseUI', JSON.stringify({ link: pdfLink, first: firstView }));
-    }
-  }
+		if (isMinimized) {
+			$statusText.text("Press Backspace to restore.");
+		} else if (isFullscreen) {
+			$statusText.text("Scroll to view the record. Backspace to minimize, ESC to close.");
+		} else {
+			$statusText.text("Press Backspace to minimize, ESC to close.");
+		}
+	}
 
-  function toggleMinimize(force) {
-    if (!isOpen) {
-      return;
-    }
+	function applyWindowState() {
+		var shouldFullscreen = isFullscreen && !isMinimized;
+		$pdfWindow.toggleClass("minimized", isMinimized);
+		$pdfWindow.toggleClass("fullscreen", shouldFullscreen);
 
-    if (typeof force === 'boolean') {
-      isMinimized = force;
-    } else {
-      isMinimized = !isMinimized;
-    }
+		$minimizeBtn.text(isMinimized ? "Restore" : "Min");
+		$minimizeBtn.attr("title", isMinimized ? "Restore" : "Minimize");
+		$fullscreenBtn.text(shouldFullscreen ? "Exit Full" : "Full");
+		$fullscreenBtn.attr("title", shouldFullscreen ? "Exit Fullscreen" : "Toggle Fullscreen");
 
-    if (isMinimized) {
-      isFullscreen = false;
-    }
+		updateStatusText();
+	}
+	function forceShowWrapper() {
+		// make sure wrapper is visible and above the game
+		$wrapper
+			.removeClass("hidden")
+			.css({
+				display: "block",
+				visibility: "visible",
+				opacity: 1,
+				"z-index": 999999,
+			})
+			.stop(true, true)
+			.fadeIn(120);
 
-    applyWindowState();
-  }
+		// your window is a flex container per CSS
+		$pdfWindow.css({ display: "flex" });
 
-  function toggleFullscreen(force) {
-    if (!isOpen) {
-      return;
-    }
+		updateStatusText();
+	}
 
-    if (isMinimized) {
-      isMinimized = false;
-    }
+	function setPdfSrc(url) {
+		var normalizedUrl = url;
+		if (!normalizedUrl || normalizedUrl === "about:blank") {
+			normalizedUrl = "";
+		}
 
-    if (typeof force === 'boolean') {
-      isFullscreen = force;
-    } else {
-      isFullscreen = !isFullscreen;
-    }
+		pdfLink = normalizedUrl;
+		pdfRenderToken += 1;
+		cancelCurrentRender();
 
-    applyWindowState();
-  }
+		if (!normalizedUrl) {
+			clearPdfViewer();
+			return;
+		}
 
-  $minimizeBtn.on('click', function () {
-    toggleMinimize();
-  });
+		if (!window.pdfjsLib || typeof pdfjsLib.getDocument !== "function") {
+			console.warn("recordPrinter: pdf.js is not available; cannot render document.");
+			clearPdfViewer("PDF viewer not available.", true);
+			return;
+		}
 
-  $fullscreenBtn.on('click', function () {
-    toggleFullscreen();
-  });
+		// Ensure worker is configured in case HTML did not set it
+		if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+			pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+		}
 
-  $closeBtn.on('click', function () {
-    closeUI(true);
-  });
+		clearPdfViewer("Loading record...");
 
-  window.addEventListener('message', function (event) {
-    var data = event.data || {};
+		var currentToken = pdfRenderToken;
+		pdfLoadingTask = pdfjsLib.getDocument({
+			url: normalizedUrl,
+		});
 
-    if (data.link) {
-      pdfLink = data.link;
-    }
-    if (typeof data.first !== 'undefined') {
-      firstView = !!data.first;
-    }
+		pdfLoadingTask.promise
+			.then(function (pdf) {
+				if (currentToken !== pdfRenderToken) {
+					return pdf.destroy();
+				}
+				$pdfViewer.empty();
+				return renderDocumentPages(pdf, currentToken);
+			})
+			.catch(function (err) {
+				if (currentToken !== pdfRenderToken) {
+					return;
+				}
+				console.error("recordPrinter: failed to load pdf:", err);
+				clearPdfViewer("Unable to load document.", true);
+			})
+			.finally(function () {
+				if (currentToken === pdfRenderToken) {
+					pdfLoadingTask = null;
+				}
+			});
+	}
 
-    switch (data.action) {
-      case 'openui':
-        openUI(pdfLink, firstView);
-        break;
-      case 'closeui':
-        closeUI(true);
-        break;
-      case 'toggleFullscreen':
-        toggleFullscreen();
-        break;
-      default:
-        break;
-    }
-  });
+	function openUI(link, firstFlag) {
+		setPdfSrc(link);
+		firstView = !!firstFlag;
+		isOpen = true;
+		isMinimized = false;
+		isFullscreen = false;
 
-  $(document).on('keydown', function (event) {
-    if (!isOpen) {
-      return;
-    }
+		// make sure the UI can actually be seen
+		forceShowWrapper();
+		applyWindowState();
+	}
 
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeUI(true);
-    } else if (event.key === 'Backspace') {
-      event.preventDefault();
-      toggleMinimize();
-    }
-  });
+	function closeUI(sendMessage) {
+		if (!isOpen) return;
+		isOpen = false;
+		isMinimized = false;
+		isFullscreen = false;
+
+		$wrapper.stop(true, true).fadeOut(120, function () {
+			setPdfSrc("");
+			$wrapper.addClass("hidden").css("display", "none");
+			updateStatusText();
+		});
+
+		if (sendMessage !== false) {
+			$.post("https://sonorancad/CloseUI", JSON.stringify({ link: pdfLink, first: firstView }));
+		}
+	}
+
+	function toggleMinimize(force) {
+		if (!isOpen) {
+			return;
+		}
+
+		if (typeof force === "boolean") {
+			isMinimized = force;
+		} else {
+			isMinimized = !isMinimized;
+		}
+
+		if (isMinimized) {
+			isFullscreen = false;
+		}
+
+		applyWindowState();
+	}
+
+	function toggleFullscreen(force) {
+		if (!isOpen) {
+			return;
+		}
+
+		if (isMinimized) {
+			isMinimized = false;
+		}
+
+		if (typeof force === "boolean") {
+			isFullscreen = force;
+		} else {
+			isFullscreen = !isFullscreen;
+		}
+
+		applyWindowState();
+	}
+
+	$minimizeBtn.on("click", function () {
+		toggleMinimize();
+	});
+
+	$fullscreenBtn.on("click", function () {
+		toggleFullscreen();
+	});
+
+	$closeBtn.on("click", function () {
+		closeUI(true);
+	});
+
+	window.addEventListener("message", function (event) {
+		var data = event.data || {};
+		console.log("recordPrinter received message:", JSON.stringify(data));
+
+		if (data.link) {
+			pdfLink = data.link;
+		}
+		if (typeof data.first !== "undefined") {
+			firstView = !!data.first;
+		}
+
+		switch (data.action) {
+			case "openUI":
+				console.log("Opening UI with link:", pdfLink, "first:", firstView);
+				openUI(pdfLink, firstView);
+				break;
+			case "closeui":
+				closeUI(true);
+				break;
+			case "toggleFullscreen":
+				toggleFullscreen();
+				break;
+			default:
+				break;
+		}
+	});
+
+	$(document).on("keydown", function (event) {
+		if (!isOpen) {
+			return;
+		}
+
+		if (event.key === "Escape") {
+			event.preventDefault();
+			closeUI(true);
+		} else if (event.key === "Backspace") {
+			event.preventDefault();
+			toggleMinimize();
+		}
+	});
 });
