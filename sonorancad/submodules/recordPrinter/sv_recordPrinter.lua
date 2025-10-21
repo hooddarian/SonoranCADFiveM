@@ -8,12 +8,48 @@
 CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig)
     TriggerEvent('SonoranCAD::RegisterPushEvent', 'EVENT_PRINT_RECORD', function(data)
         local printData = data.data
-        local userId = GetUnitById(printData.unitId).userId
-        local pdfDirectory = exports['sonorancad']:createPDFDirectory(printData.unitId)
-        local filename = printData.url:match("^.+/(.+)$")
+        local unitCache = GetUnitCache()
+        local userId = GetUnitById(printData.identId)
+        local unitInCache = nil
+        for _, unit in pairs(unitCache) do
+            if unit.id == userId then
+                unitInCache = unit
+                break
+            end
+        end
+        local unitSource = GetSourceByApiId(unitInCache and unitInCache.data.apiIds or {})
+        if not unitSource then return warnLog('User tried to print a PDF in-game but was not found in the unit cache')end
+        local function resolvePromise(value)
+            if type(value) == 'table' or type(value) == 'userdata' then
+                local ok, result = pcall(function()
+                    return Citizen.Await(value)
+                end)
+                if ok then
+                    return result
+                end
+            end
+            return value
+        end
+
+        local identId = tostring(printData.identId or 'unknown')
+        local pdfDirectory = resolvePromise(exports['sonorancad']:createPDFDirectory(identId)) or ''
+        if pdfDirectory == '' then
+            warnLog(('Record printer failed to get directory for %s'):format(identId))
+            return
+        end
+
+        local filename = printData.url:match("^.+/(.+)$") or (('record_%s.pdf'):format(os.time()))
         local filePath = pdfDirectory .. '/' .. filename
-        local pdfName = exports['sonorancad']:savePdfFromUrl(printData.url, filePath)
-        TriggerClientEvent('SonoranCAD::recordPrinter:PrintQueue', userId, pdfName)
+        local savedPath = resolvePromise(exports['sonorancad']:savePdfFromUrl(printData.url, filePath))
+        if not savedPath or savedPath == '' then
+            warnLog(('Record printer failed to save PDF for %s'):format(identId))
+            return
+        end
+
+        local resourceName = GetCurrentResourceName()
+        local pdfLink = ('nui://%s/submodules/recordPrinter/pdfs/%s/%s'):format(resourceName, identId, filename)
+        TriggerClientEvent('SonoranCAD::recordPrinter:PrintQueue', unitSource, printData.url)
+
     end)
     local Docs = {}
     local ESX = nil
@@ -74,7 +110,7 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
     RegisterNetEvent('SonoranPDF:PutAway:QB:First', function(pdfUrl)
         if not pluginConfig.frameworks.use_qbcore then return end
         local Player = QBCore.Functions.GetPlayer(source)
-        if not Player then return end
+        if not Player then print('player no exist?') return end
         local info = {}
         info.pdf_link = pdfUrl
         Player.Functions.AddItem('sonoran_evidence_pdf', 1, nil, info)
@@ -146,48 +182,43 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
     -----------------------------------------
     -- Handlers - Don't Touch (Use Config) --
     -----------------------------------------
+    loadConfig()
 
-    AddEventHandler('onServerResourceStart', function(resourceName)
-        if resourceName ~= GetCurrentResourceName() then return end
+    -- push existing docs to clients on start
+    TriggerEvent('SonoranPDF:Server:BroadcastDocs')
+    TriggerEvent(GetCurrentResourceName() .. '::StartUpdateLoop') -- keep if used elsewhere
 
-        loadConfig()
+    -- QB item
+    if pluginConfig.frameworks.use_qbcore then
+        exports['qb-core']:AddItem('sonoran_evidence_pdf', {
+            name = 'sonoran_evidence_pdf',
+            label = 'Evidence PDF',
+            weight = 0,
+            type = 'item',
+            image = 'evidence.png',
+            unique = true,
+            useable = true,
+            shouldClose = false,
+            combinable = nil,
+            description = pluginConfig.translations.photoDescription
+        })
+        QBCore.Functions.CreateUseableItem('sonoran_evidence_pdf', function(source, item)
+            -- item.info.pdf_link
+            TriggerClientEvent('sonoran:lookpdf:qbcore', source, item)
+        end)
+    end
 
-        -- push existing docs to clients on start
-        TriggerEvent('SonoranPDF:Server:BroadcastDocs')
-        TriggerEvent(GetCurrentResourceName() .. '::StartUpdateLoop') -- keep if used elsewhere
-
-        -- QB item
-        if pluginConfig.frameworks.use_qbcore then
-            exports['qb-core']:AddItem('sonoran_evidence_pdf', {
-                name = 'sonoran_evidence_pdf',
-                label = 'Evidence PDF',
-                weight = 0,
-                type = 'item',
-                image = 'evidence.png',
-                unique = true,
-                useable = true,
-                shouldClose = false,
-                combinable = nil,
-                description = pluginConfig.translations.photoDescription
-            })
-            QBCore.Functions.CreateUseableItem('sonoran_evidence_pdf', function(source, item)
-                -- item.info.pdf_link
-                TriggerClientEvent('sonoran:lookpdf:qbcore', source, item)
-            end)
-        end
-
-        -- ESX items (keep camera item registration removed; only PDF)
-        if pluginConfig.frameworks.use_esx then
-            ESX.RegisterUsableItem('sonoran_evidence_pdf', function(source)
-                local ox_inventory = exports.ox_inventory
-                local results = ox_inventory:Search(source, 1, 'sonoran_evidence_pdf')
-                local entry
-                for _, v in pairs(results) do entry = v; break end
-                if entry then
-                    TriggerClientEvent('sonoran:lookpdf:esx', source, entry)
-                end
-            end)
-        end
-    end)
+    -- ESX items (keep camera item registration removed; only PDF)
+    if pluginConfig.frameworks.use_esx then
+        ESX.RegisterUsableItem('sonoran_evidence_pdf', function(source)
+            local ox_inventory = exports.ox_inventory
+            local results = ox_inventory:Search(source, 1, 'sonoran_evidence_pdf')
+            local entry
+            for _, v in pairs(results) do entry = v; break end
+            if entry then
+                TriggerClientEvent('sonoran:lookpdf:esx', source, entry)
+            end
+        end)
+    end
 
 end) end)

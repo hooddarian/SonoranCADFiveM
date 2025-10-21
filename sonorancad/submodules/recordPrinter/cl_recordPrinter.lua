@@ -7,6 +7,49 @@
 ]]
 CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig)
     local printQueue = {}
+    local function prettyFileName(path, opts)
+        opts = opts or {}
+        local max_len    = opts.max_len == nil and 40 or opts.max_len
+        local keep_ext   = opts.keep_ext or false
+        local dash_style = opts.dash_style or "spaced-dash"  -- choices: space | spaced-dash | keep
+
+        -- 1) take just the last path segment
+        local base = path:match("([^/\\]+)$") or path
+
+        -- 2) optionally drop extension
+        local ext = base:match("%.[%w]+$") or ""
+        local name = keep_ext and base or base:gsub("%.[%w]+$", "")
+
+        -- 3) strip leading UUID (8-4-4-4-12) + common separators
+        local uuidPattern = "^(%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x)[%s%-%_]*"
+        name = name:gsub(uuidPattern, "")
+
+        -- 4) normalize separators
+        name = name:gsub("[_]+", " ")         -- underscores -> spaces
+        if dash_style == "space" then
+            name = name:gsub("%s*%-%s*", " ")
+        elseif dash_style == "spaced-dash" then
+            name = name:gsub("%s*%-%s*", " - ")
+        else
+            -- "keep": leave dashes as-is
+        end
+
+        -- 5) trim & collapse whitespace
+        name = name:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+
+        -- 6) clip if too long
+        if max_len and #name > max_len then
+            name = name:sub(1, max_len - 1) .. "…"
+        end
+
+        if keep_ext and ext ~= "" then
+            name = name .. ext
+        end
+
+        -- fallback
+        if name == "" then name = "(untitled)" end
+        return name
+    end
     RegisterNetEvent('SonoranCAD::recordPrinter:PrintQueue', function(data)
         table.insert(printQueue, data)
         -- Check queue size
@@ -24,11 +67,21 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         })
     end)
     RegisterCommand(pluginConfig.printQueueCommand, function()
+        if #printQueue == 0 then
+            sendChat({255, 200, 0}, "Your print queue is empty.")
+            return
+        end
+
         for i, url in ipairs(printQueue) do
+            local rawPath = url
+            if type(rawPath) ~= 'string' then
+                rawPath = tostring(rawPath or '')
+            end
+            local displayName = prettyFileName(rawPath, { keep_ext = true, max_len = pluginConfig.queueDisplayMaxLength or 48 })
             TriggerEvent('chat:addMessage', {
                 color = { 0, 255, 0},
                 multiline = true,
-                args = {"Record Printer", "Record " .. i .. ": " .. url}
+                args = {"Record Printer", "Record " .. i .. ": " .. displayName}
             })
         end
     end, false)
@@ -109,7 +162,7 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         return isInVehicleWithPrinter(4.0) or isNearPrinterObject(3.5) or isAtPrinterCoord(3.5)
     end
 
-    local function sendChat(color, msg)
+    function sendChat(color, msg)
         TriggerEvent('chat:addMessage', {
             color = color or {255,255,255},
             multiline = true,
@@ -156,8 +209,15 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
 
         -- For now, just notify and remove it from the queue after "printing"
         sendChat({0, 255, 0}, ("Printing: queue #%d"):format(idx))
+        SendNuiMessage(json.encode({ action = 'openUI', link = url, first = true, type = 'pdf', recordPrinter = true }))
+        SetNuiFocus(true, true)
         table.remove(printQueue, idx)
     end, false)
+    TriggerEvent('chat:addSuggestion', '/' .. pluginConfig.printCommand, 'Print a record from your print queue.', {
+        { name = 'index', help = 'The position in your print queue to print (see /' .. pluginConfig.printQueueCommand .. ')' }
+    })
+    TriggerEvent('chat:addSuggestion', '/' .. pluginConfig.printQueueCommand, 'View your current print queue.')
+    TriggerEvent('chat:addSuggestion', '/' .. pluginConfig.clearPrintQueueCommand, 'Clear your current print queue.')
     -- State
     local holdingDoc = false
     local doc_link = nil
@@ -287,11 +347,10 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
                                 DeleteEntity(e.entityObject)
                             end
                             TriggerServerEvent('SonoranPDF:destroyWorldPDF', closestId)
-                            SendNuiMessage(json.encode({ action = 'openui', link = e.pdf_link, first = false, type = 'pdf' }))
+                            SendNuiMessage(json.encode({ action = 'openUI', link = e.pdf_link, first = false, type = 'pdf', recordPrinter = true }))
                             ToggleDocHold(true)
                             SetNuiFocusKeepInput(true)
                             table.remove(WorldDocs, closestId)
-                            DisplayNotification(pluginConfig.translations.putPhotoAway)
                         end
 
                         -- G: destroy in world
@@ -315,30 +374,27 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         -- QB: item.info.pdf_link
         local link = (item and item.info and item.info.pdf_link) or nil
         if not link or link == '' then return end
-        SendNuiMessage(json.encode({ action = 'openui', link = link, first = false, type = 'pdf' }))
+        SendNuiMessage(json.encode({ action = 'openUI', link = link, first = false, type = 'pdf', recordPrinter = true }))
         ToggleDocHold(true)
-        SetNuiFocusKeepInput(true)
-        DisplayNotification(pluginConfig.translations.putPhotoAway)
+        SetNuiFocus(true, true)
     end)
 
     RegisterNetEvent('sonoran:lookpdf:esx', function(item)
         -- ESX (ox): entry.metadata.pdf_link
         local link = (item and item.metadata and item.metadata.pdf_link) or nil
         if not link or link == '' then return end
-        SendNuiMessage(json.encode({ action = 'openui', link = link, first = false, type = 'pdf' }))
+        SendNuiMessage(json.encode({ action = 'openUI', link = link, first = false, type = 'pdf', recordPrinter = true }))
         ToggleDocHold(true)
-        SetNuiFocusKeepInput(true)
-        DisplayNotification(pluginConfig.translations.putPhotoAway)
+        SetNuiFocus(true, true)
     end)
 
     -- Optional: direct open (e.g., when a brand-new PDF is produced and you want it to be “First” so putting away adds to inventory)
     RegisterNetEvent('SonoranPDF:Open', function(url)
         if not url or url == '' then return end
         doc_link = url
-        SendNuiMessage(json.encode({ action = 'openui', link = url, first = true, type = 'pdf' })) -- first=true -> inventory put-away
+        SendNuiMessage(json.encode({ action = 'openUI', link = url, first = true, type = 'pdf', recordPrinter = true })) -- first=true -> inventory put-away
         ToggleDocHold(true)
-        SetNuiFocusKeepInput(true)
-        DisplayNotification(pluginConfig.translations.pressToDrop)
+        SetNuiFocus(true, true)
     end)
 
     -- =========================
@@ -422,7 +478,7 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
             if holdingDoc then
                 DisableControlAction(0, 202, true) -- BACK
                 if IsDisabledControlJustPressed(0, 202) then
-                    SendNuiMessage(json.encode({ action = 'closeui' }))
+                    SendNuiMessage(json.encode({ action = 'closeui', recordPrinter = true }))
                     DisableControlAction(0, 202, false)
                     SetNuiFocus(false, false)
                 end

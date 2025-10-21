@@ -120,10 +120,15 @@ $(function () {
 		$pdfWindow.toggleClass("minimized", isMinimized);
 		$pdfWindow.toggleClass("fullscreen", shouldFullscreen);
 
-		$minimizeBtn.text(isMinimized ? "Restore" : "Min");
 		$minimizeBtn.attr("title", isMinimized ? "Restore" : "Minimize");
-		$fullscreenBtn.text(shouldFullscreen ? "Exit Full" : "Full");
-		$fullscreenBtn.attr("title", shouldFullscreen ? "Exit Fullscreen" : "Toggle Fullscreen");
+		$minimizeBtn.attr("aria-label", isMinimized ? "Restore Window" : "Minimize Window");
+
+		$fullscreenBtn.attr("title", shouldFullscreen ? "Exit Fullscreen" : "Fullscreen");
+		$fullscreenBtn.attr("aria-label", shouldFullscreen ? "Exit Fullscreen" : "Enter Fullscreen");
+
+		$fullscreenBtn.find(".icon")
+			.toggleClass("icon-maximize", !shouldFullscreen)
+			.toggleClass("icon-restore", shouldFullscreen);
 
 		updateStatusText();
 	}

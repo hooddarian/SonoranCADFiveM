@@ -11,9 +11,15 @@
 				<div class="window-header">
 					<div class="window-title">Record Viewer</div>
 					<div class="window-actions">
-						<button id="minimizeBtn" class="control-btn" title="Minimize">Min</button>
-						<button id="fullscreenBtn" class="control-btn" title="Fullscreen">Full</button>
-						<button id="closeBtn" class="control-btn" title="Close">Close</button>
+						<button id="minimizeBtn" class="control-btn" title="Minimize" aria-label="Minimize Window">
+							<span class="icon icon-minimize"></span>
+						</button>
+						<button id="fullscreenBtn" class="control-btn" title="Fullscreen" aria-label="Toggle Fullscreen">
+							<span class="icon icon-maximize"></span>
+						</button>
+						<button id="closeBtn" class="control-btn close-btn" title="Close" aria-label="Close Window">
+							<span class="icon icon-close"></span>
+						</button>
 					</div>
 				</div>
 
