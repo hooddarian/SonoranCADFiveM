@@ -407,8 +407,11 @@ CreateThread(function()
     if Config.critError then return end
     local serverId = Config.serverId
     while Config.apiVersion == -1 do Wait(10) end
-    if not Config.apiSendEnabled or Config.apiVersion < 3 then
+    if Config.apiVersion < 3 then
         debugLog('Too low version or API disabled, ignore this')
+        return
+    elseif not Config.apiSendEnabled then
+        errorLog('Config.apiSendEnabled disabled via convar or config, skipping server registration. Check your config if this is unintentional.')
         return
     end
     performApiRequest({}, 'GET_SERVERS', function(response)
@@ -507,34 +510,6 @@ CreateThread(function()
         warnLog(
             'The livemap plugin is no longer being used due to the map being native to the CAD. You can remove this plugin.')
     end
-end)
-
-CreateThread(function()
-    -- attempt to fetch web_baseUrl
-    local baseUrl = ''
-    local counter = 0
-    if Config.bodycamEnabled then
-        local counter = 0
-        while baseUrl == '' do
-            Wait(1000)
-            baseUrl = GetConvar('web_baseUrl', '')
-
-            -- Every 60 seconds, log a warning
-            counter = counter + 1
-            if counter % 60 == 0 then
-                warnLog('Still waiting for web_baseUrl convar to be set...bodycam will not work until this is set.')
-            end
-        end
-    else
-        -- Run the loop once
-        baseUrl = GetConvar('web_baseUrl', '')
-        if baseUrl == '' then
-            warnLog('Bodycam is disabled and web_baseUrl is not set. Skipping loop.')
-        end
-    end
-    Config.proxyUrl = ('https://%s/sonorancad/'):format(GetConvar('web_baseUrl',''))
-    debugLog(('Set proxyUrl to %s'):format(Config.proxyUrl))
-    TriggerClientEvent('SonoranCAD::bodycam::Init', -1, 1, Config.apiVersion)
 end)
 
 CreateThread(function()
