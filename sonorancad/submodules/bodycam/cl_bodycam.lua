@@ -165,7 +165,8 @@ CreateThread(function()
                         bodyCamOn = false
                         if showOverlay then
                             SendNUIMessage({
-                                type = 'toggleGif',
+                                type = 'bodycamOverlay',
+                                visible = false,
                                 location = pluginConfig.overlayLocation
                             })
                         end
@@ -177,7 +178,8 @@ CreateThread(function()
                         bodyCamOn = true
                         if showOverlay then
                             SendNUIMessage({
-                                type = 'toggleGif',
+                                type = 'bodycamOverlay',
+                                visible = true,
                                 location = pluginConfig.overlayLocation
                             })
                         end
@@ -245,7 +247,8 @@ CreateThread(function()
                     end
                     if bodyCamOn then
                         SendNUIMessage({
-                            type = 'toggleGif',
+                            type = 'bodycamOverlay',
+                            visible = showOverlay,
                             location = pluginConfig.overlayLocation
                         })
                     end
