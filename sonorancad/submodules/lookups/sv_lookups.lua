@@ -167,12 +167,16 @@ if pluginConfig.enabled then
                                     for k, field in pairs(record.fields) do
                                         if field["uid"] ~= nil then
                                             if string.match(field.uid, "_") then
-                                                reg[field.label:lower()] = field.value
-                                                debugLog(("set %s = %s"):format(field.label:lower(), field.value))
+                                                local labelKey = field.label ~= nil and field.label:lower() or field.uid
+                                                reg[labelKey] = field.value
+                                                debugLog(("set %s = %s"):format(labelKey, field.value))
                                             else
                                                 reg[field.uid] = field.value
                                                 debugLog(("set %s = %s"):format(field.uid, field.value))
                                             end
+                                            reg[field.uid] = field.value
+                                            reg.__fieldLabels = reg.__fieldLabels or {}
+                                            reg.__fieldLabels[field.uid] = field.label ~= nil and field.label or field.uid
                                         end
                                     end
                                     table.insert(regData, reg)
