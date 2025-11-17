@@ -1,5 +1,5 @@
 {
-  "resource": "3.2.18",
+  "resource": "3.2.19",
   "testedFxServerVersion": "5932",
   "submoduleConfigs": {
     "bodycam": {
@@ -108,7 +108,7 @@
       "requiresPlugins": []
     },
     "wraithv2": {
-      "version": "1.6",
+      "version": "1.7",
       "requiresPlugins": [
         {
           "name": "lookups",

@@ -33,6 +33,9 @@ if pluginConfig.enabled then
 			noReg = 5000
 		}
 	end
+	if pluginConfig.customFields == nil then
+		pluginConfig.customFields = {}
+	end
 	wraithLastPlates = {locked = nil, scanned = nil}
 
 	exports('cadGetLastPlates', function()
@@ -46,6 +49,25 @@ if pluginConfig.enabled then
 			end
 		end
 		return false
+	end
+
+	local function formatCustomFieldLines(record)
+		if record == nil or pluginConfig.customFields == nil or #pluginConfig.customFields == 0 then
+			return ''
+		end
+		local lines = {}
+		local labels = record.__fieldLabels or {}
+		for _, fieldId in ipairs(pluginConfig.customFields) do
+			local value = record[fieldId]
+			if value ~= nil and value ~= '' then
+				local label = labels[fieldId] or fieldId
+				table.insert(lines, ('%s: %s'):format(label, value))
+			end
+		end
+		if #lines > 0 then
+			return table.concat(lines, '<br/>') .. '<br/>'
+		end
+		return ''
 	end
 
 	RegisterNetEvent('wk:onPlateLocked')
@@ -107,8 +129,9 @@ if pluginConfig.enabled then
 				local status = regData[1][statusUid]
 				local expires = (regData[1][expiresUid] and pluginConfig.useExpires) and ('Expires: %s<br/>'):format(regData[1][expiresUid]) or ''
 				local owner = (pluginConfig.useMiddleInitial and person.mi ~= '') and ('%s %s, %s'):format(person.first, person.last, person.mi) or ('%s %s'):format(person.first, person.last)
+				local customFieldsText = formatCustomFieldLines(regData[1])
 				TriggerClientEvent('pNotify:SendNotification', source,
-				                   {text = ('<b style=\'color:yellow\'>' .. camCapitalized .. ' ALPR</b><br/>Plate: %s<br/>Status: %s<br/>%sOwner: %s'):format(plate:upper(), status, expires, owner),
+				                   {text = ('<b style=\'color:yellow\'>' .. camCapitalized .. ' ALPR</b><br/>Plate: %s<br/>Status: %s<br/>%s%sOwner: %s'):format(plate:upper(), status, expires, customFieldsText, owner),
 					type = 'success', queue = 'alpr', timeout = pluginConfig.notificationTimers.validReg, layout = 'centerLeft'})
 				if #boloData > 0 then
 					local flags = table.concat(boloData, ',')
@@ -200,9 +223,10 @@ if pluginConfig.enabled then
 				local status = regData[1][statusUid]
 				local expires = (regData[1][expiresUid] and pluginConfig.useExpires) and ('Expires: %s<br/>'):format(regData[1][expiresUid]) or ''
 				local owner = (pluginConfig.useMiddleInitial and person.mi ~= '') and ('%s %s, %s'):format(person.first, person.last, person.mi) or ('%s %s'):format(person.first, person.last)
+				local customFieldsText = formatCustomFieldLines(regData[1])
 				if status ~= nil and has_value(flagStatuses, status) then
 					TriggerClientEvent('pNotify:SendNotification', source,
-									{text = ('<b style=\'color:yellow\'>' .. camCapitalized .. ' ALPR</b><br/>Plate: %s<br/>Status: %s<br/>%sOwner: %s'):format(plate:upper(), status, expires, owner),
+									{text = ('<b style=\'color:yellow\'>' .. camCapitalized .. ' ALPR</b><br/>Plate: %s<br/>Status: %s<br/>%s%sOwner: %s'):format(plate:upper(), status, expires, customFieldsText, owner),
 						type = 'success', queue = 'alpr', timeout = pluginConfig.notificationTimers.validReg, layout = 'centerLeft'})
 				end
 				if #boloData > 0 then
