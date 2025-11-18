@@ -496,7 +496,7 @@ if pluginConfig.enabled then
                 -- Set CalloutLocations to an empty array
                 callout.CalloutLocations = {}
 
-                if #callout.PedWeaponData == 0 or callout.PedWeaponData == nil then
+                if callout.PedWeaponData == nil or #callout.PedWeaponData == 0 then
                     callout.PedWeaponData = {}
                 end
 
