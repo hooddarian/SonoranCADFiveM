@@ -142,7 +142,13 @@ local config = {
             -- Civilian Information
             ["first"] = "FirstName",
             ["last"] = "LastName",
-            ["mi"] = "", -- No M.I. mapped
+            ["mi"] = function(pedData)
+                if (math.random() > 0.1) then
+                    return ""
+                end
+
+                return string.char(math.random(65, 90))
+            end,
             ["dob"] = "DOB",
             ["age"] = function(pedData)
                 return returnAgeFromDobString(pedData.DOB)
