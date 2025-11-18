@@ -130,6 +130,14 @@ local config = {
                 return "APPROVED"
             end,
             ["878766af4964853a7"] = function(pedData, ctx)
+                if (pedData[ctx.license]) == "Revoked" then
+                    return "REVOKED"
+                end
+
+                if (pedData[ctx.license]) == "Expired" then
+                    return "EXPIRED"
+                end
+
                 return pedData[ctx.is_valid] and "VALID" or "EXPIRED"
             end,
             ["_54iz1scv7"] = function(pedData, ctx)
