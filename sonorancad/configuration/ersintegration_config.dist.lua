@@ -75,6 +75,7 @@ local config = {
             end,
             -- Vehicle Information
             ["plate"] = "license_plate",
+            ["make"] = "make",
             ["model"] = "model",
             ["color"] = function(vehicleData)
                 if vehicleData.color_secondary and vehicleData.color_secondary ~= "" then
