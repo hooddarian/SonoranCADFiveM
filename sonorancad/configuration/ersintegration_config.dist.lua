@@ -86,9 +86,13 @@ local config = {
             ["year"] = "build_year",
             ["type"] = function(vehicleData)
                 local classMap = {
-                    [0] = "SEDAN", [1] = "SEDAN", [2] = "SUV", [3] = "SUV",
-                    [4] = "COUPE", [5] = "COUPE", [6] = "OFFROAD", [7] = "TRUCK",
-                    [8] = "MOTORCYCLE", [9] = "MARINE", [16] = "AIRCRAFT"
+                    [0] = "COMPACT", [1] = "SEDAN", [2] = "SUV", [3] = "COUPE",
+                    [4] = "MUSCLE", [5] = "SPORTS", [6] = "SPORTS", [7] = "SPORTS",
+                    [8] = "MOTORCYCLE", [9] = "OFFROAD", [10] = "COMMERCIAL", 
+                    [11] = "COMMERCIAL", [12] = "VAN", [13] = "CYCLE", [14] = "MARINE",
+                    [15] = "AIRCRAFT", [16] = "AIRCRAFT", [17] = "COMMERCIAL",
+                    [18] = "EMERGENCY", [19] = "MILITARY", [20] = "COMMERCIAL",
+                    [21] = "RAIL", [22] = "SPORTS"
                 }
                 return classMap[vehicleData.vehicle_class] or "SEDAN"
             end,
