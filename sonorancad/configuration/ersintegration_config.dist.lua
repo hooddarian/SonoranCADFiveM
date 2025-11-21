@@ -64,6 +64,10 @@ local config = {
                 return "APPROVED"
             end,
             ["_imtoih149"] = function(vehicleData)
+                if not vehicleData.mot then
+                    return generateDate(365, true)
+                end
+
                 return generateDate(365, false)
             end,
             -- Civilian Information
