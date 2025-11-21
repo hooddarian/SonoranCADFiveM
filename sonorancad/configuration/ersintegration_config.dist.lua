@@ -9,7 +9,7 @@ local config = {
     enabled = false,
     pluginName = "ersintegration", -- name your plugin here
     pluginAuthor = "SonoranCAD", -- author
-    configVersion = "1.3",
+    configVersion = "1.4",
     -- put your configuration options below
     DOBFormat = "en", -- Make sure this matches | en: dd/mm/yyyy | us: mm/dd/yyyy | iso: yyyy/mm/dd
     clearRecordsAfter = 30, -- Clear records after this many minutes (0 = never)
@@ -93,7 +93,7 @@ local config = {
                 local classMap = {
                     [0] = "COMPACT", [1] = "SEDAN", [2] = "SUV", [3] = "COUPE",
                     [4] = "MUSCLE", [5] = "SPORTS", [6] = "SPORTS", [7] = "SPORTS",
-                    [8] = "MOTORCYCLE", [9] = "OFFROAD", [10] = "COMMERCIAL", 
+                    [8] = "MOTORCYCLE", [9] = "OFFROAD", [10] = "COMMERCIAL",
                     [11] = "COMMERCIAL", [12] = "VAN", [13] = "CYCLE", [14] = "MARINE",
                     [15] = "AIRCRAFT", [16] = "AIRCRAFT", [17] = "COMMERCIAL",
                     [18] = "EMERGENCY", [19] = "MILITARY", [20] = "COMMERCIAL",
