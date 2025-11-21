@@ -61,16 +61,14 @@ local config = {
                 end
             end,
             ["_wsakvwigt"] = function(vehicleData)
-                if vehicleData.stolen then
-                    return "STOLEN"
-                elseif not vehicleData.mot then
-                    return "EXPIRED"
-                else
-                    return "VALID"
-                end
+                return '1'
             end,
             ["_imtoih149"] = function(vehicleData)
-                return os.date("%m/%d/%Y", os.time() + (60 * 60 * 24 * 365)) -- +1 year from now
+                if not vehicleData.mot then
+                    return generateDate(365, true)
+                end
+
+                return generateDate(365, false)
             end,
             -- Civilian Information
             ["first"] = function(vehicleData)
@@ -81,6 +79,7 @@ local config = {
             end,
             -- Vehicle Information
             ["plate"] = "license_plate",
+            ["make"] = "make",
             ["model"] = "model",
             ["color"] = function(vehicleData)
                 if vehicleData.color_secondary and vehicleData.color_secondary ~= "" then
@@ -92,12 +91,17 @@ local config = {
             ["year"] = "build_year",
             ["type"] = function(vehicleData)
                 local classMap = {
-                    [0] = "SEDAN", [1] = "SEDAN", [2] = "SUV", [3] = "SUV",
-                    [4] = "COUPE", [5] = "COUPE", [6] = "OFFROAD", [7] = "TRUCK",
-                    [8] = "MOTORCYCLE", [9] = "MARINE", [16] = "AIRCRAFT"
+                    [0] = "COMPACT", [1] = "SEDAN", [2] = "SUV", [3] = "COUPE",
+                    [4] = "MUSCLE", [5] = "SPORTS", [6] = "SPORTS", [7] = "SPORTS",
+                    [8] = "MOTORCYCLE", [9] = "OFFROAD", [10] = "COMMERCIAL", 
+                    [11] = "COMMERCIAL", [12] = "VAN", [13] = "CYCLE", [14] = "MARINE",
+                    [15] = "AIRCRAFT", [16] = "AIRCRAFT", [17] = "COMMERCIAL",
+                    [18] = "EMERGENCY", [19] = "MILITARY", [20] = "COMMERCIAL",
+                    [21] = "RAIL", [22] = "SPORTS"
                 }
                 return classMap[vehicleData.vehicle_class] or "SEDAN"
             end,
+            ["img"] = "vehicle_picture_url",
         -- Add more keys as needed:
         -- owner = "Owner"  -- Example: if pedData.Owner exists.
         },
@@ -133,22 +137,36 @@ local config = {
         licenseRecordValues = {
             -- License Information
             ["252c4250da9421cbd"] = function(pedData, ctx)
-                return pedData[ctx.is_valid] and "VALID" or "SUSPENDED"
+                return "APPROVED"
             end,
             ["878766af4964853a7"] = function(pedData, ctx)
+                if (pedData[ctx.license]) == "Revoked" then
+                    return "SUSPENDED"
+                end
+
+                if (pedData[ctx.license]) == "Expired" then
+                    return "EXPIRED"
+                end
+
                 return pedData[ctx.is_valid] and "VALID" or "EXPIRED"
             end,
             ["_54iz1scv7"] = function(pedData, ctx)
                 if pedData[ctx.license] == "Expired" then
-                    return os.date("%m/%d/%Y", os.time() - (60 * 60 * 24 * math.random(1, 365))) -- Within the last year
+                    return generateDate(365, true)
                 end
 
-                return os.date("%m/%d/%Y", os.time() + (60 * 60 * 24 * math.random(1, 365))) -- Within a year
+                return generateDate(365, false)
             end,
             -- Civilian Information
             ["first"] = "FirstName",
             ["last"] = "LastName",
-            ["mi"] = "", -- No M.I. mapped
+            ["mi"] = function(pedData)
+                if (math.random() > 0.1) then
+                    return ""
+                end
+
+                return string.char(math.random(65, 90))
+            end,
             ["dob"] = "DOB",
             ["age"] = function(pedData)
                 return returnAgeFromDobString(pedData.DOB)
@@ -199,4 +217,30 @@ function returnAgeFromDobString(dobString)
     end
 
     return tostring(age)
+end
+
+function generateDate(maxdays, before)
+    local SECONDS_IN_DAY = 60 * 60 * 24
+    local CURRENT_TIME = os.time()
+    local OFFSET_SECONDS = math.random(1, maxdays) * SECONDS_IN_DAY
+
+    local target_time
+    if (before) then
+        target_time = CURRENT_TIME - OFFSET_SECONDS
+    else
+        target_time = CURRENT_TIME + OFFSET_SECONDS
+    end
+
+    local format_string
+    local format_type = string.lower(config.DOBFormat or "")
+
+    if format_type == "us" then
+        format_string = "%m/%d/%Y"
+    elseif format_type == "en" then
+        format_string = "%d/%m/%Y"
+    else -- Default to ISO
+        format_string = "%Y/%m/%d"
+    end
+
+    return os.date(format_string, target_time)
 end
