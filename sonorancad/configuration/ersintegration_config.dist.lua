@@ -137,7 +137,7 @@ local config = {
             end,
             ["878766af4964853a7"] = function(pedData, ctx)
                 if (pedData[ctx.license]) == "Revoked" then
-                    return "REVOKED"
+                    return "SUSPENDED"
                 end
 
                 if (pedData[ctx.license]) == "Expired" then
