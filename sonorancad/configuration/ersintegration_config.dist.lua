@@ -61,7 +61,7 @@ local config = {
                 end
             end,
             ["_wsakvwigt"] = function(vehicleData)
-                return 1
+                return '1'
             end,
             ["_imtoih149"] = function(vehicleData)
                 if not vehicleData.mot then
