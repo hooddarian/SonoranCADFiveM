@@ -1,7 +1,7 @@
 --[[
     Sonaran CAD Plugins
 
-    Plugin Name: ersintegration
+    Plugin Name: recordprinter
     Creator: Sonoran Software
     Description: Integrates SonoranCAD PDFs in-game.
 ]]
@@ -9,10 +9,11 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
     TriggerEvent('SonoranCAD::RegisterPushEvent', 'EVENT_PRINT_RECORD', function(data)
         local printData = data.data
         local unitCache = GetUnitCache()
-        local userId = GetUnitById(printData.identId)
+        -- local userId = GetUnitById(printData.identId)
+        -- print('record printer received print request for', printData.identId, 'from user', json.encode(userId))
         local unitInCache = nil
         for _, unit in pairs(unitCache) do
-            if unit.id == userId then
+            if unit.id == printData.identId then
                 unitInCache = unit
                 break
             end
@@ -136,16 +137,16 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
             return
         end
 
-        -- ensure metadata is set
-        local item = ox_inventory:Search(source, 1, 'sonoran_evidence_pdf')
-        for _, v in pairs(item) do
-            item = v
-            break
-        end
-        if item and item.slot and item.metadata then
-            item.metadata.pdf_link = pdfUrl
-            ox_inventory:SetMetadata(source, item.slot, item.metadata)
-        end
+        -- -- ensure metadata is set
+        -- local item = ox_inventory:Search(source, 1, 'sonoran_evidence_pdf')
+        -- for _, v in pairs(item) do
+        --     item = v
+        --     break
+        -- end
+        -- if item and item.slot and item.metadata then
+        --     item.metadata.pdf_link = pdfUrl
+        --     ox_inventory:SetMetadata(source, item.slot, item.metadata)
+        -- end
     end)
 
     -- ox_inventory export handler for using the PDF item (ESX)
@@ -209,7 +210,7 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
     end
 
     -- ESX items (keep camera item registration removed; only PDF)
-    if pluginConfig.frameworks.use_esx then
+    if pluginConfig.frameworks.use_esx and not pluginConfig.frameworks.use_esx_ox_inventory then
         ESX.RegisterUsableItem('sonoran_evidence_pdf', function(source)
             local ox_inventory = exports.ox_inventory
             local results = ox_inventory:Search(source, 1, 'sonoran_evidence_pdf')
