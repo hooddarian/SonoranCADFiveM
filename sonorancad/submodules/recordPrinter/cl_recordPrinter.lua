@@ -7,6 +7,41 @@
 ]]
 CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig)
     local printQueue = {}
+    local doc_link = nil
+    local holdingDoc = false
+    local radius = pluginConfig.interactRadius or 3.0
+    local baseCommand = pluginConfig.commandPrefix or "printer"
+    local function frameworksEnabled()
+        local fw = pluginConfig.frameworks or {}
+        return fw.use_qbcore or fw.use_esx or fw.use_esx_ox_inventory or fw.use_custom_inventory or fw.use_quasar_inventory
+    end
+    local function setActiveDocLink(link) doc_link = link end
+    local function enqueueRecord(recordUrl, opts)
+        opts = opts or {}
+        if not recordUrl or recordUrl == '' then return end
+
+        table.insert(printQueue, recordUrl)
+
+        local maxQueue = pluginConfig.maxPrintsPerQueue or 5
+        if #printQueue > maxQueue then
+            table.remove(printQueue, 1)
+        end
+
+        local sharedBy = opts.sharedBy
+        local message = "You have a new record to print."
+        if sharedBy and sharedBy ~= '' then
+            message = ("New record shared by %s."):format(sharedBy)
+        end
+
+        TriggerEvent('chat:addMessage', {
+            color = { 0, 255, 0},
+            multiline = true,
+            args = {
+                "Record Printer",
+                message .. " Use /" .. baseCommand .. " queue to view queue."
+            }
+        })
+    end
     local function prettyFileName(path, opts)
         opts = opts or {}
         local max_len    = opts.max_len == nil and 40 or opts.max_len
@@ -51,48 +86,11 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         return name
     end
     RegisterNetEvent('SonoranCAD::recordPrinter:PrintQueue', function(data)
-        table.insert(printQueue, data)
-        -- Check queue size
-        if #printQueue > pluginConfig.maxPrintsPerQueue then
-            -- Remove the oldest (first) entry
-            table.remove(printQueue, 1)
-        end
-        TriggerEvent('chat:addMessage', {
-            color = { 0, 255, 0},
-            multiline = true,
-            args = {
-                "Record Printer",
-                "You have a new record to print. Use /" .. pluginConfig.printQueueCommand .. " to view queue."
-            }
-        })
+        enqueueRecord(data)
     end)
-    RegisterCommand(pluginConfig.printQueueCommand, function()
-        if #printQueue == 0 then
-            sendChat({255, 200, 0}, "Your print queue is empty.")
-            return
-        end
-
-        for i, url in ipairs(printQueue) do
-            local rawPath = url
-            if type(rawPath) ~= 'string' then
-                rawPath = tostring(rawPath or '')
-            end
-            local displayName = prettyFileName(rawPath, { keep_ext = true, max_len = pluginConfig.queueDisplayMaxLength or 48 })
-            TriggerEvent('chat:addMessage', {
-                color = { 0, 255, 0},
-                multiline = true,
-                args = {"Record Printer", "Record " .. i .. ": " .. displayName}
-            })
-        end
-    end, false)
-    RegisterCommand(pluginConfig.clearPrintQueueCommand, function()
-        printQueue = {}
-        TriggerEvent('chat:addMessage', {
-            color = { 0, 255, 0},
-            multiline = true,
-            args = {"Record Printer", "Print queue cleared."}
-        })
-    end, false)
+    RegisterNetEvent('SonoranCAD::recordPrinter:RecordShared', function(url, sharedBy)
+        enqueueRecord(url, { sharedBy = sharedBy })
+    end)
     local function isNearPrinterObject(radius)
         local ped = PlayerPedId()
         local pCoords = GetEntityCoords(ped)
@@ -159,7 +157,7 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
 
     local function nearAnyPrinter()
         -- Succeeds if: in vehicle AND printer nearby, OR on foot and near a printer object, OR at a configured coord
-        return isInVehicleWithPrinter(4.0) or isNearPrinterObject(3.5) or isAtPrinterCoord(3.5)
+        return isInVehicleWithPrinter(radius) or isNearPrinterObject(radius + 0.5) or isAtPrinterCoord(radius + 0.5)
     end
 
     function sendChat(color, msg)
@@ -170,57 +168,143 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         })
     end
 
-    RegisterCommand(pluginConfig.printCommand, function(source, args, raw)
-        -- Basic validations
+    local function printQueueList()
+        if #printQueue == 0 then
+            sendChat({255, 200, 0}, "Your print queue is empty.")
+            return
+        end
+
+        for i, url in ipairs(printQueue) do
+            local rawPath = url
+            if type(rawPath) ~= 'string' then
+                rawPath = tostring(rawPath or '')
+            end
+            local displayName = prettyFileName(rawPath, { keep_ext = true, max_len = pluginConfig.queueDisplayMaxLength or 48 })
+            TriggerEvent('chat:addMessage', {
+                color = { 0, 255, 0},
+                multiline = true,
+                args = {"Record Printer", "Record " .. i .. ": " .. displayName}
+            })
+        end
+    end
+
+    local function doPrint(idx)
         if type(printQueue) ~= "table" or #printQueue == 0 then
             sendChat({255, 100, 100}, "Your print queue is empty.")
             return
         end
-
-        local idx = tonumber(args[1] or "")
         if not idx then
-            sendChat({255, 200, 0}, "Usage: /" .. pluginConfig.printCommand .. " <queue index>")
+            sendChat({255, 200, 0}, "Usage: /" .. baseCommand .. " print <queue index>")
             return
         end
         if idx < 1 or idx > #printQueue then
             sendChat({255, 100, 100}, ("Invalid position. Queue has %d item(s)."):format(#printQueue))
             return
         end
-
-        -- Printer proximity check (vehicle printer OR nearby object OR at printer coords)
         if not nearAnyPrinter() then
             sendChat({255, 200, 0}, "You're not near a printer or inside a vehicle that has a printer.")
             return
         end
 
-        -- Fetch URL from queue
         local url = printQueue[idx]
         if not url or url == "" then
             sendChat({255, 100, 100}, "That queue entry is invalid.")
             return
         end
 
-        -- Do the actual print action (replace with your real print logic)
-        -- Example: trigger your record-printer flow with the selected URL
-        -- If your printing is server-side:
-        -- TriggerServerEvent('SonoranCAD::recordPrinter:StartPrint', url)
-        -- If it's client-side:
-        -- exports['recordPrinter']:Print(url)
-
-        -- For now, just notify and remove it from the queue after "printing"
         sendChat({0, 255, 0}, ("Printing: queue #%d"):format(idx))
+        setActiveDocLink(url)
         SendNuiMessage(json.encode({ action = 'openUI', link = url, first = true, type = 'pdf', recordPrinter = true }))
         SetNuiFocus(true, true)
         table.remove(printQueue, idx)
+    end
+
+    local function getNearbyPlayers(radius)
+        local nearby = {}
+        local myPed = PlayerPedId()
+        local myCoords = GetEntityCoords(myPed)
+        for _, pid in ipairs(GetActivePlayers()) do
+            if pid ~= PlayerId() then
+                local tgtPed = GetPlayerPed(pid)
+                if DoesEntityExist(tgtPed) then
+                    local dist = #(GetEntityCoords(tgtPed) - myCoords)
+                    if dist <= radius then
+                        table.insert(nearby, GetPlayerServerId(pid))
+                    end
+                end
+            end
+        end
+        return nearby
+    end
+
+    local function doShare(args)
+        if frameworksEnabled() then
+            sendChat({255, 100, 100}, "Sharing is only available when inventory frameworks are disabled.")
+            return
+        end
+
+        local senderName = GetPlayerName(PlayerId())
+
+        if holdingDoc and doc_link and doc_link ~= '' then
+            local nearby = getNearbyPlayers(radius)
+            if #nearby == 0 then
+                sendChat({255, 200, 0}, "No nearby units within 3 to share your document with.")
+                return
+            end
+
+            TriggerServerEvent('SonoranCAD::recordPrinter:ShareRecord', doc_link, senderName, nearby)
+            sendChat({0, 255, 0}, ("Shared your document with %d nearby unit(s)."):format(#nearby))
+            return
+        end
+
+        local targetArg = args[2]
+        if not targetArg then
+            sendChat({255, 200, 0}, "Usage: hold a document near others or /" .. baseCommand .. " share <server id> to email your queue.")
+            return
+        end
+        local targetId = tonumber(targetArg)
+        if not targetId then
+            sendChat({255, 100, 100}, "Invalid server ID.")
+            return
+        end
+        if type(printQueue) ~= "table" or #printQueue == 0 then
+            sendChat({255, 100, 100}, "Your print queue is empty.")
+            return
+        end
+
+        local queueCopy = {}
+        for _, url in ipairs(printQueue) do
+            table.insert(queueCopy, url)
+        end
+        TriggerServerEvent('SonoranCAD::recordPrinter:EmailQueue', queueCopy, senderName, targetId)
+        sendChat({0, 255, 0}, ("Emailed %d record(s) to server ID %s."):format(#queueCopy, targetId))
+    end
+
+    RegisterCommand(baseCommand, function(_, args)
+        local sub = (args[1] or ""):lower()
+        if sub == "queue" then
+            printQueueList()
+        elseif sub == "clear" then
+            printQueue = {}
+            TriggerEvent('chat:addMessage', {
+                color = { 0, 255, 0},
+                multiline = true,
+                args = {"Record Printer", "Print queue cleared."}
+            })
+        elseif sub == "print" then
+            doPrint(tonumber(args[2] or ""))
+        elseif sub == "share" then
+            doShare(args)
+        else
+            sendChat({255, 200, 0}, ("Usage: /%s queue | /%s print <index> | /%s clear | /%s share [server id]"):format(baseCommand, baseCommand, baseCommand, baseCommand))
+        end
     end, false)
-    TriggerEvent('chat:addSuggestion', '/' .. pluginConfig.printCommand, 'Print a record from your print queue.', {
-        { name = 'index', help = 'The position in your print queue to print (see /' .. pluginConfig.printQueueCommand .. ')' }
+
+    TriggerEvent('chat:addSuggestion', '/' .. baseCommand, 'Record printer: queue | print <index> | clear | share [server id]', {
+        { name = 'action', help = 'queue | print | clear | share' },
+        { name = 'param', help = 'For print/share: queue index or server id' }
     })
-    TriggerEvent('chat:addSuggestion', '/' .. pluginConfig.printQueueCommand, 'View your current print queue.')
-    TriggerEvent('chat:addSuggestion', '/' .. pluginConfig.clearPrintQueueCommand, 'Clear your current print queue.')
     -- State
-    local holdingDoc = false
-    local doc_link = nil
     local WorldDocs = {}  -- [{ pdf_link=string, Position={x,y,z}, entityObject=entity }, ...]
 
     -- Props/Anims for “holding” a doc while UI is open
@@ -349,6 +433,7 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
                             TriggerServerEvent('SonoranPDF:destroyWorldPDF', closestId)
                             SendNuiMessage(json.encode({ action = 'openUI', link = e.pdf_link, first = false, type = 'pdf', recordPrinter = true }))
                             ToggleDocHold(true)
+                            setActiveDocLink(e.pdf_link)
                             SetNuiFocusKeepInput(true)
                             table.remove(WorldDocs, closestId)
                         end
@@ -376,6 +461,7 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         if not link or link == '' then return end
         SendNuiMessage(json.encode({ action = 'openUI', link = link, first = false, type = 'pdf', recordPrinter = true }))
         ToggleDocHold(true)
+        setActiveDocLink(link)
         SetNuiFocus(true, true)
     end)
 
@@ -385,13 +471,14 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         if not link or link == '' then return end
         SendNuiMessage(json.encode({ action = 'openUI', link = link, first = false, type = 'pdf', recordPrinter = true }))
         ToggleDocHold(true)
+        setActiveDocLink(link)
         SetNuiFocus(true, true)
     end)
 
     -- Optional: direct open (e.g., when a brand-new PDF is produced and you want it to be “First” so putting away adds to inventory)
     RegisterNetEvent('SonoranPDF:Open', function(url)
         if not url or url == '' then return end
-        doc_link = url
+        setActiveDocLink(url)
         SendNuiMessage(json.encode({ action = 'openUI', link = url, first = true, type = 'pdf', recordPrinter = true })) -- first=true -> inventory put-away
         ToggleDocHold(true)
         SetNuiFocus(true, true)

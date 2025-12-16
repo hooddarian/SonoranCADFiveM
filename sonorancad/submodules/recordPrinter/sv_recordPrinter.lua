@@ -107,6 +107,57 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         TriggerEvent('SonoranPDF:Server:BroadcastDocs')
     end)
 
+    RegisterNetEvent('SonoranCAD::recordPrinter:ShareRecord', function(recordUrl, sharedBy, targetList)
+        local src = source
+        if not recordUrl or recordUrl == '' then return end
+
+        local senderName = sharedBy
+        if not senderName or senderName == '' then
+            senderName = GetPlayerName(src) or ('ID %s'):format(src)
+        end
+
+        local targets = {}
+        if type(targetList) == 'table' then
+            for _, tid in ipairs(targetList) do
+                tid = tonumber(tid)
+                if tid and tid ~= src then
+                    table.insert(targets, tid)
+                end
+            end
+        end
+
+        if #targets == 0 then
+            for _, playerId in ipairs(GetPlayers()) do
+                local target = tonumber(playerId)
+                if target and target ~= src then
+                    table.insert(targets, target)
+                end
+            end
+        end
+
+        for _, target in ipairs(targets) do
+            TriggerClientEvent('SonoranCAD::recordPrinter:RecordShared', target, recordUrl, senderName)
+        end
+    end)
+
+    RegisterNetEvent('SonoranCAD::recordPrinter:EmailQueue', function(queueUrls, sharedBy, targetId)
+        local src = source
+        local target = tonumber(targetId)
+        if not target then return end
+        if type(queueUrls) ~= 'table' or #queueUrls == 0 then return end
+
+        local senderName = sharedBy
+        if not senderName or senderName == '' then
+            senderName = GetPlayerName(src) or ('ID %s'):format(src)
+        end
+
+        for _, url in ipairs(queueUrls) do
+            if type(url) == 'string' and url ~= '' then
+                TriggerClientEvent('SonoranCAD::recordPrinter:RecordShared', target, url, senderName)
+            end
+        end
+    end)
+
     -- Inventory put-away: QB
     RegisterNetEvent('SonoranPDF:PutAway:QB:First', function(pdfUrl)
         if not pluginConfig.frameworks.use_qbcore then return end
