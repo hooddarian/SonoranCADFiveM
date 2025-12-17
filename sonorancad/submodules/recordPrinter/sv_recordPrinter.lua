@@ -107,6 +107,62 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         TriggerEvent('SonoranPDF:Server:BroadcastDocs')
     end)
 
+    RegisterNetEvent('SonoranCAD::recordPrinter:ShareRecord', function(recordUrl, sharedBy, targetList)
+        local src = source
+        if type(recordUrl) ~= 'string' or recordUrl == '' then return end
+
+        -- Basic allowlist for expected URLs (external https or local NUI file)
+        if not (recordUrl:match("^https?://") or recordUrl:match("^nui://")) then
+            warnLog(('Record printer rejected ShareRecord with invalid url from %s'):format(src))
+            return
+        end
+
+        local senderName = sharedBy
+        if not senderName or senderName == '' then
+            senderName = GetPlayerName(src) or ('ID %s'):format(src)
+        end
+
+        local targets = {}
+        local seen = {}
+        if type(targetList) == 'table' then
+            for _, tid in ipairs(targetList) do
+                tid = tonumber(tid)
+                if tid and tid ~= src and GetPlayerName(tid) and not seen[tid] then
+                    table.insert(targets, tid)
+                    seen[tid] = true
+                end
+            end
+        end
+
+        -- If no valid targets remain, bail instead of broadcasting to everyone.
+        if #targets == 0 then
+            warnLog(('Record printer ShareRecord rejected empty target list from %s'):format(src))
+            return
+        end
+
+        for _, target in ipairs(targets) do
+            TriggerClientEvent('SonoranCAD::recordPrinter:RecordShared', target, recordUrl, senderName, "direct")
+        end
+    end)
+
+    RegisterNetEvent('SonoranCAD::recordPrinter:EmailQueue', function(queueUrls, sharedBy, targetId)
+        local src = source
+        local target = tonumber(targetId)
+        if not target then return end
+        if type(queueUrls) ~= 'table' or #queueUrls == 0 then return end
+
+        local senderName = sharedBy
+        if not senderName or senderName == '' then
+            senderName = GetPlayerName(src) or ('ID %s'):format(src)
+        end
+
+        for _, url in ipairs(queueUrls) do
+            if type(url) == 'string' and url ~= '' then
+                TriggerClientEvent('SonoranCAD::recordPrinter:RecordShared', target, url, senderName, "email")
+            end
+        end
+    end)
+
     -- Inventory put-away: QB
     RegisterNetEvent('SonoranPDF:PutAway:QB:First', function(pdfUrl)
         if not pluginConfig.frameworks.use_qbcore then return end

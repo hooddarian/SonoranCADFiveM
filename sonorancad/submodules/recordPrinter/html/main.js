@@ -14,6 +14,13 @@ $(function () {
 	var $closeBtn = $("#closeBtn");
 	var pdfRenderToken = 0;
 	var pdfLoadingTask = null;
+	function notifyMinimizeChanged() {
+		try {
+			$.post("https://sonorancad/RecordPrinter:MinimizeChanged", JSON.stringify({ minimized: isMinimized }));
+		} catch (err) {
+			console.warn("recordPrinter: failed to notify minimize state", err);
+		}
+	}
 
 	function clearPdfViewer(message, isError) {
 		$pdfViewer.empty();
@@ -216,6 +223,7 @@ $(function () {
 		// make sure the UI can actually be seen
 		forceShowWrapper();
 		applyWindowState();
+		notifyMinimizeChanged();
 	}
 
 	function closeUI(sendMessage) {
@@ -251,6 +259,16 @@ $(function () {
 		}
 
 		applyWindowState();
+		notifyMinimizeChanged();
+
+		// Explicitly request focus release on minimize
+		if (isMinimized) {
+			try {
+				$.post("https://sonorancad/RecordPrinter:ForceReleaseFocus", JSON.stringify({}));
+			} catch (err) {
+				console.warn("recordPrinter: failed to request focus release", err);
+			}
+		}
 	}
 
 	function toggleFullscreen(force) {
@@ -285,7 +303,6 @@ $(function () {
 
 	window.addEventListener("message", function (event) {
 		var data = event.data || {};
-		console.log("recordPrinter received message:", JSON.stringify(data));
 
 		if (data.link) {
 			pdfLink = data.link;
@@ -296,11 +313,13 @@ $(function () {
 
 		switch (data.action) {
 			case "openUI":
-				console.log("Opening UI with link:", pdfLink, "first:", firstView);
 				openUI(pdfLink, firstView);
 				break;
 			case "closeui":
 				closeUI(true);
+				break;
+			case "toggleMinimize":
+				toggleMinimize();
 				break;
 			case "toggleFullscreen":
 				toggleFullscreen();
@@ -320,7 +339,7 @@ $(function () {
 			closeUI(true);
 		} else if (event.key === "Backspace") {
 			event.preventDefault();
-			toggleMinimize();
+			toggleMinimize(); 
 		}
 	});
 });
