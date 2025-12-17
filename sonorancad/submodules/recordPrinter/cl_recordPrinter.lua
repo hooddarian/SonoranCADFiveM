@@ -7,10 +7,40 @@
 ]]
 CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig)
     local printQueue = {}
+    local pendingShares = {}
     local doc_link = nil
     local holdingDoc = false
+    local uiOpen = false
+    local uiMinimized = false
     local radius = pluginConfig.interactRadius or 3.0
     local baseCommand = pluginConfig.commandPrefix or "printer"
+    local defaultCommands = { queue = "queue", clear = "clear", print = "print", share = "share", accept = "accept" }
+    local function normalizeCommand(cmd, fallback)
+        if type(cmd) ~= "string" then return fallback end
+        local lowered = cmd:lower()
+        if lowered == "" then return fallback end
+        return lowered
+    end
+    local configuredCommands = {
+        queue = normalizeCommand(pluginConfig.printQueueCommand, defaultCommands.queue),
+        clear = normalizeCommand(pluginConfig.clearPrintQueueCommand, defaultCommands.clear),
+        print = normalizeCommand(pluginConfig.printCommand, defaultCommands.print),
+        share = normalizeCommand(pluginConfig.shareCommand, defaultCommands.share),
+        accept = normalizeCommand(pluginConfig.acceptShareCommand or pluginConfig.acceptCommand, defaultCommands.accept)
+    }
+    local commandLookup = {}
+    for key, name in pairs(configuredCommands) do
+        name = (type(name) == "string" and name or ""):lower()
+        if name ~= "" then
+            commandLookup[name] = key
+        end
+    end
+    -- Keep defaults as aliases so existing command usage still works.
+    for key, name in pairs(defaultCommands) do
+        if not commandLookup[name] then
+            commandLookup[name] = key
+        end
+    end
     local function frameworksEnabled()
         local fw = pluginConfig.frameworks or {}
         return fw.use_qbcore or fw.use_esx or fw.use_esx_ox_inventory or fw.use_custom_inventory or fw.use_quasar_inventory
@@ -38,7 +68,7 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
             multiline = true,
             args = {
                 "Record Printer",
-                message .. " Use /" .. baseCommand .. " queue to view queue."
+                message .. " Use /" .. baseCommand .. " " .. configuredCommands.queue .. " to view queue."
             }
         })
     end
@@ -88,8 +118,13 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
     RegisterNetEvent('SonoranCAD::recordPrinter:PrintQueue', function(data)
         enqueueRecord(data)
     end)
-    RegisterNetEvent('SonoranCAD::recordPrinter:RecordShared', function(url, sharedBy)
-        enqueueRecord(url, { sharedBy = sharedBy })
+    RegisterNetEvent('SonoranCAD::recordPrinter:RecordShared', function(url, sharedBy, deliveryMode)
+        if not url or url == '' then return end
+        local sender = sharedBy or 'Unknown'
+        local mode = deliveryMode or "queue"
+        table.insert(pendingShares, { url = url, sharedBy = sender, mode = mode })
+        local idx = #pendingShares
+        sendChat({0, 255, 0}, ("New record shared by %s. Use /%s %s %d to accept."):format(sender, baseCommand, configuredCommands.accept, idx))
     end)
     local function isNearPrinterObject(radius)
         local ped = PlayerPedId()
@@ -194,7 +229,7 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
             return
         end
         if not idx then
-            sendChat({255, 200, 0}, "Usage: /" .. baseCommand .. " print <queue index>")
+            sendChat({255, 200, 0}, "Usage: /" .. baseCommand .. " " .. configuredCommands.print .. " <queue index>")
             return
         end
         if idx < 1 or idx > #printQueue then
@@ -215,7 +250,9 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         sendChat({0, 255, 0}, ("Printing: queue #%d"):format(idx))
         setActiveDocLink(url)
         SendNuiMessage(json.encode({ action = 'openUI', link = url, first = true, type = 'pdf', recordPrinter = true }))
+        uiOpen, uiMinimized = true, false
         SetNuiFocus(true, true)
+        SetNuiFocusKeepInput(false)
         table.remove(printQueue, idx)
     end
 
@@ -259,7 +296,7 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
 
         local targetArg = args[2]
         if not targetArg then
-            sendChat({255, 200, 0}, "Usage: hold a document near others or /" .. baseCommand .. " share <server id> to email your queue.")
+            sendChat({255, 200, 0}, "Usage: hold a document near others or /" .. baseCommand .. " " .. configuredCommands.share .. " <server id> to email your queue.")
             return
         end
         local targetId = tonumber(targetArg)
@@ -280,29 +317,61 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         sendChat({0, 255, 0}, ("Emailed %d record(s) to server ID %s."):format(#queueCopy, targetId))
     end
 
+    local function acceptShare(args)
+        if type(pendingShares) ~= "table" or #pendingShares == 0 then
+            sendChat({255, 200, 0}, "No pending shared records to accept.")
+            return
+        end
+
+        local idx = tonumber(args[2]) or 1
+        if idx < 1 or idx > #pendingShares then
+            sendChat({255, 100, 100}, ("Invalid position. Pending list has %d item(s)."):format(#pendingShares))
+            return
+        end
+
+        local entry = table.remove(pendingShares, idx)
+        if entry.mode == "direct" then
+            setActiveDocLink(entry.url)
+            SendNuiMessage(json.encode({ action = 'openUI', link = entry.url, first = false, type = 'pdf', recordPrinter = true }))
+            uiOpen, uiMinimized = true, false
+            ToggleDocHold(true)
+            SetNuiFocus(true, true)
+            SetNuiFocusKeepInput(false)
+            sendChat({0, 255, 0}, ("Opened shared record from %s."):format(entry.sharedBy or "Unknown"))
+        else
+            enqueueRecord(entry.url, { sharedBy = entry.sharedBy })
+            sendChat({0, 255, 0}, ("Accepted shared record from %s."):format(entry.sharedBy or "Unknown"))
+        end
+    end
+
     RegisterCommand(baseCommand, function(_, args)
         local sub = (args[1] or ""):lower()
-        if sub == "queue" then
+        local action = commandLookup[sub]
+        if action == "queue" then
             printQueueList()
-        elseif sub == "clear" then
+        elseif action == "clear" then
             printQueue = {}
             TriggerEvent('chat:addMessage', {
                 color = { 0, 255, 0},
                 multiline = true,
                 args = {"Record Printer", "Print queue cleared."}
             })
-        elseif sub == "print" then
+        elseif action == "print" then
             doPrint(tonumber(args[2] or ""))
-        elseif sub == "share" then
+        elseif action == "share" then
             doShare(args)
+        elseif action == "accept" then
+            acceptShare(args)
         else
-            sendChat({255, 200, 0}, ("Usage: /%s queue | /%s print <index> | /%s clear | /%s share [server id]"):format(baseCommand, baseCommand, baseCommand, baseCommand))
+            sendChat({255, 200, 0}, ("Usage: /%s %s | /%s %s <index> | /%s %s | /%s %s [server id] | /%s %s [index]"):format(
+                baseCommand, configuredCommands.queue, baseCommand, configuredCommands.print, baseCommand, configuredCommands.clear, baseCommand, configuredCommands.share, baseCommand, configuredCommands.accept))
         end
     end, false)
 
-    TriggerEvent('chat:addSuggestion', '/' .. baseCommand, 'Record printer: queue | print <index> | clear | share [server id]', {
-        { name = 'action', help = 'queue | print | clear | share' },
-        { name = 'param', help = 'For print/share: queue index or server id' }
+    TriggerEvent('chat:addSuggestion', '/' .. baseCommand, ('Record printer: %s | %s <index> | %s | %s [server id] | %s [index]'):format(
+        configuredCommands.queue, configuredCommands.print, configuredCommands.clear, configuredCommands.share, configuredCommands.accept), {
+        { name = 'action', help = ('%s | %s | %s | %s | %s'):format(configuredCommands.queue, configuredCommands.print, configuredCommands.clear, configuredCommands.share, configuredCommands.accept) },
+        { name = 'param', help = 'For print/share/accept: queue index or server id' }
     })
     -- State
     local WorldDocs = {}  -- [{ pdf_link=string, Position={x,y,z}, entityObject=entity }, ...]
@@ -357,6 +426,22 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         DrawText(_x, _y)
         local factor = (string.len(text)) / 370
         DrawRect(_x, _y + 0.0125, 0.015 + factor, 0.03, 41, 11, 41, 68)
+    end
+
+    local function deleteWorldEntitySafely(entity)
+        if not entity or not DoesEntityExist(entity) then return end
+        NetworkRequestControlOfEntity(entity)
+        local timeout = GetGameTimer() + 1500
+        while not NetworkHasControlOfEntity(entity) and GetGameTimer() < timeout do
+            NetworkRequestControlOfEntity(entity)
+            Wait(10)
+        end
+        SetEntityAsMissionEntity(entity, true, true)
+        DeleteEntity(entity)
+        DeleteObject(entity)
+        if DoesEntityExist(entity) then
+            SetEntityCoords(entity, 0.0, 0.0, -100.0, false, false, false, true)
+        end
     end
 
     -- =========================
@@ -428,20 +513,24 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
                         -- E: pickup & open viewer (does NOT add to inventory automatically)
                         if IsControlJustReleased(0, 38) then
                             if e.entityObject and DoesEntityExist(e.entityObject) then
-                                DeleteEntity(e.entityObject)
+                                deleteWorldEntitySafely(e.entityObject)
+                                e.entityObject = nil
                             end
                             TriggerServerEvent('SonoranPDF:destroyWorldPDF', closestId)
                             SendNuiMessage(json.encode({ action = 'openUI', link = e.pdf_link, first = false, type = 'pdf', recordPrinter = true }))
+                            uiOpen, uiMinimized = true, false
                             ToggleDocHold(true)
                             setActiveDocLink(e.pdf_link)
-                            SetNuiFocusKeepInput(true)
+                            SetNuiFocusKeepInput(false)
+                            SetNuiFocus(true, true)
                             table.remove(WorldDocs, closestId)
                         end
 
                         -- G: destroy in world
                         if IsControlJustReleased(0, 47) then
                             if e.entityObject and DoesEntityExist(e.entityObject) then
-                                DeleteEntity(e.entityObject)
+                                deleteWorldEntitySafely(e.entityObject)
+                                e.entityObject = nil
                             end
                             TriggerServerEvent('SonoranPDF:destroyWorldPDF', closestId)
                             table.remove(WorldDocs, closestId)
@@ -460,8 +549,10 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         local link = (item and item.info and item.info.pdf_link) or nil
         if not link or link == '' then return end
         SendNuiMessage(json.encode({ action = 'openUI', link = link, first = false, type = 'pdf', recordPrinter = true }))
+        uiOpen, uiMinimized = true, false
         ToggleDocHold(true)
         setActiveDocLink(link)
+        SetNuiFocusKeepInput(false)
         SetNuiFocus(true, true)
     end)
 
@@ -470,8 +561,10 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         local link = (item and item.metadata and item.metadata.pdf_link) or nil
         if not link or link == '' then return end
         SendNuiMessage(json.encode({ action = 'openUI', link = link, first = false, type = 'pdf', recordPrinter = true }))
+        uiOpen, uiMinimized = true, false
         ToggleDocHold(true)
         setActiveDocLink(link)
+        SetNuiFocusKeepInput(false)
         SetNuiFocus(true, true)
     end)
 
@@ -480,7 +573,9 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         if not url or url == '' then return end
         setActiveDocLink(url)
         SendNuiMessage(json.encode({ action = 'openUI', link = url, first = true, type = 'pdf', recordPrinter = true })) -- first=true -> inventory put-away
+        uiOpen, uiMinimized = true, false
         ToggleDocHold(true)
+        SetNuiFocusKeepInput(false)
         SetNuiFocus(true, true)
     end)
 
@@ -491,6 +586,8 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         -- data.link (pdf url), data.first (bool), type='pdf'
         local link = data and data.link or nil
         local isFirst = data and data.first or false
+        uiOpen, uiMinimized = false, false
+        SetNuiFocusKeepInput(false)
 
         if pluginConfig.frameworks.use_qbcore and not pluginConfig.frameworks.use_quasar_inventory then
             if isFirst then
@@ -543,9 +640,9 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         else
             -- No inventory: drop to world if “first”
             SetNuiFocus(false, false)
+            local pos = GetEntityCoords(PlayerPedId())
+            TriggerServerEvent('SonoranPDF:SaveToWorld', link, pos.x, pos.y, pos.z - 0.8)
             if isFirst then
-                local pos = GetEntityCoords(PlayerPedId())
-                TriggerServerEvent('SonoranPDF:SaveToWorld', link, pos.x, pos.y, pos.z - 0.8)
                 DisplayNotification(pluginConfig.translations.putAwayCamera)
             else
                 DisplayNotification(pluginConfig.translations.imageDropped)
@@ -556,6 +653,42 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
         ToggleDocHold(false)
     end)
 
+    RegisterNUICallback('RecordPrinter:MinimizeChanged', function(data, cb)
+        uiMinimized = data and data.minimized or false
+        if uiMinimized then
+            releaseFocus()
+            -- extra nudge: run twice to ensure FiveM drops focus immediately
+            Wait(0)
+            releaseFocus()
+        elseif uiOpen then
+            SetNuiFocusKeepInput(false)
+            SetNuiFocus(true, true)
+        end
+        if cb then cb({ ok = true }) end
+    end)
+
+    RegisterNUICallback('RecordPrinter:ForceReleaseFocus', function(_, cb)
+        releaseFocus()
+        if cb then cb({ ok = true }) end
+    end)
+
+    local function releaseFocus()
+        SetNuiFocus(false, false)
+        SetNuiFocusKeepInput(false)
+    end
+
+    -- Extra guard: if minimized, make sure focus stays released
+    CreateThread(function()
+        while true do
+            if uiOpen and uiMinimized then
+                releaseFocus()
+                Wait(100)
+            else
+                Wait(500)
+            end
+        end
+    end)
+
     -- =========================
     -- Held-doc prop while UI open
     -- =========================
@@ -564,11 +697,27 @@ CreateThread(function() Config.LoadPlugin("recordPrinter", function(pluginConfig
             Wait(1)
             if holdingDoc then
                 DisableControlAction(0, 202, true) -- BACK
-                if IsDisabledControlJustPressed(0, 202) then
-                    SendNuiMessage(json.encode({ action = 'closeui', recordPrinter = true }))
-                    DisableControlAction(0, 202, false)
-                    SetNuiFocus(false, false)
+                if uiMinimized and IsDisabledControlJustPressed(0, 202) then
+                    if uiOpen then
+                        SendNuiMessage(json.encode({ action = 'toggleMinimize', recordPrinter = true }))
+                        releaseFocus()
+                    end
                 end
+            end
+        end
+    end)
+
+    -- Allow restoring/minimizing with BACK even after focus was released
+    CreateThread(function()
+        while true do
+            if uiOpen then
+                if IsControlJustReleased(0, 202) then
+                    SendNuiMessage(json.encode({ action = 'toggleMinimize', recordPrinter = true }))
+                    releaseFocus()
+                end
+                Wait(5)
+            else
+                Wait(250)
             end
         end
     end)

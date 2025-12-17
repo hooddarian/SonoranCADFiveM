@@ -16,6 +16,7 @@ local config = {
     printCommand = "print", -- command to print record
     clearPrintQueueCommand = "clearqueue", -- command to clear print queue
     shareCommand = "recordshare", -- command to share a queued record with other players
+    acceptShareCommand = "accept", -- command to accept a shared record into your queue
     maxPrintsPerQueue = 5, -- max number of prints allowed in print queue
     vehicleConfig = {
         reverseWhitelist = false, -- if true the whitelist will be used as a blacklist
