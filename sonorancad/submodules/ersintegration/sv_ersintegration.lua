@@ -523,7 +523,7 @@ if pluginConfig.enabled then
             calloutData.callout.data.CalloutLocations = {[1] = vector3(locations.x, locations.y, locations.z)}
             local calloutID = exports.night_ers:createCallout(calloutData.callout)
             calloutData.callout.newId = calloutID.calloutId
-            TriggerClientEvent('SonoranCAD::ErsIntegration::BuildCallout', -1, calloutData.callout)
+            TriggerClientEvent('ErsIntegration::BuildCallout', -1, calloutData.callout)
             if calloutID then
                 debugLog("Callout " .. calloutID.calloutId .. " created.")
                 TriggerClientEvent('SonoranCAD::ErsIntegration::RequestCallout', -1, calloutID.calloutId)
