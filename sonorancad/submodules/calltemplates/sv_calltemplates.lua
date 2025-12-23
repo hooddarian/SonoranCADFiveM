@@ -40,6 +40,8 @@ CreateThread(function()
 
             if type(decoded.callType) == "table" then
                 decoded = decoded.callType
+            elseif type(decoded) == "table" and #decoded > 0 and type(decoded[1]) == "table" then
+                decoded = decoded[1]
             end
 
             if not pluginConfig.reloadTemplatesOnEachUse then
@@ -148,6 +150,7 @@ CreateThread(function()
 
             local payload = {
                 serverId = Config.serverId,
+                callId = template.callId or -1,
                 origin = template.origin or pluginConfig.defaultOrigin or 2,
                 status = template.status or pluginConfig.defaultStatus or 1,
                 priority = template.priority or pluginConfig.defaultPriority or 2,
@@ -159,7 +162,10 @@ CreateThread(function()
                 description = buildDescription(cmdConfig, template, args),
                 notes = mergeNotes(template.notes, extraNotes),
                 metaData = template.metaData or {},
-                units = units
+                units = units,
+                primary = template.primary or -1,
+                trackPrimary = template.trackPrimary or false,
+                idents = template.idents or {}
             }
 
             TriggerEvent("SonoranCAD::calltemplates:SendDispatch", payload, source, cmdConfig.command)

@@ -1,0 +1,19 @@
+[
+    {
+        "callId": -1,
+        "origin": 0,
+        "status": 0,
+        "priority": 3,
+        "block": "",
+        "address": "",
+        "postal": "",
+        "title": "Bank Robbery",
+        "code": "10-90: Bank Alarm",
+        "primary": -1,
+        "trackPrimary": false,
+        "description": "Automatic bank alarm:",
+        "notes": [],
+        "idents": [],
+        "metaData": {}
+    }
+]
