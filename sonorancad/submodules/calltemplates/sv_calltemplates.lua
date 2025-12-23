@@ -181,11 +181,12 @@ CreateThread(function()
 
         for _, cmdConfig in ipairs(pluginConfig.commands or {}) do
             if cmdConfig.command ~= nil and cmdConfig.callTypeFile ~= nil then
-                local restricted = cmdConfig.useAcePermissions
+                local cfg = cmdConfig 
+                local restricted = cfg.useAcePermissions
                 if restricted == nil then restricted = true end
 
-                RegisterCommand(cmdConfig.command, function(source, args, rawCommand)
-                    handleCommand(cmdConfig, source, args, rawCommand)
+                RegisterCommand(cfg.command, function(source, args, rawCommand)
+                    handleCommand(cfg, source, args, rawCommand)
                 end, restricted)
             else
                 warnLog("[calltemplates] command configuration missing `command` or `callTypeFile`")
