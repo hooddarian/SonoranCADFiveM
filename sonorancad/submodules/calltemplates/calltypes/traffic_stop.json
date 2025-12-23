@@ -1,0 +1,12 @@
+{
+  "title": "Traffic Stop",
+  "code": "10-11 - Traffic Stop",
+  "priority": 1,
+  "origin": 2,
+  "status": 1,
+  "block": "",
+  "description": "Traffic Stop",
+  "notes": [],
+  "metaData": {},
+  "units": []
+}
