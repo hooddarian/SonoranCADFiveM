@@ -8,7 +8,7 @@
 ]]
 local config = {
     enabled = false,
-    configVersion = "3.0",
+    configVersion = "3.1",
     pluginName = "dispatchnotify", -- name your plugin here
     pluginAuthor = "SonoranCAD", -- author
     requiresPlugins = {
@@ -93,6 +93,11 @@ local config = {
     ]]
     -- incomingCallMessage = "<b>Incoming Call!</b><br/>Location: {location}<br/>Description: {description}<br/>Use command /r911 <b>{callId}</b> to respond!",
     incomingCallMessage = "Incoming call from ^*{caller}^r! Location: ^3{location}^0 Description: ^3{description}^0 - Use /{command} ^*{callId}^r to respond!",
+    --[[
+        incomingCallMessageNoResponse: message shown when dispatchDisablesSelfResponse is true and a dispatcher is online.
+        Removes the self-response instructions from the notification.
+    ]]
+    incomingCallMessageNoResponse = "Incoming call from ^*{caller}^r! Location: ^3{location}^0 Description: ^3{description}^0",
 
     --[[
         unitDutyMethod: How to detect if units are online?
