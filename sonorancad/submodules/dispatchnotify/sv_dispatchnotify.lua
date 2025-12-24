@@ -134,7 +134,12 @@ if pluginConfig.enabled then
         end
         if pluginConfig.enableUnitNotify then
             local type = call.emergency and pluginConfig.civilCallType or pluginConfig.emergencyCallType
-            local message = pluginConfig.incomingCallMessage:gsub("{caller}", call.caller):gsub("{location}", call.location):gsub("{description}", call.description):gsub("{callId}", call.callId):gsub("{command}", pluginConfig.respondCommandName)
+            local messageTemplate = pluginConfig.incomingCallMessage
+            if pluginConfig.dispatchDisablesSelfResponse and not pluginConfig.enableUnitResponse then
+                -- Hide self-response instructions when dispatchers are online
+                messageTemplate = pluginConfig.incomingCallMessageNoResponse or pluginConfig.incomingCallMessage
+            end
+            local message = messageTemplate:gsub("{caller}", call.caller):gsub("{location}", call.location):gsub("{description}", call.description):gsub("{callId}", call.callId):gsub("{command}", pluginConfig.respondCommandName)
             for i = 0, GetNumPlayerIndices()-1 do
                 local player = GetPlayerFromIndex(i)
                 local unit = GetUnitByPlayerId(player)
