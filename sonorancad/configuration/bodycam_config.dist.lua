@@ -10,7 +10,7 @@ local config = {
     enabled = true,
     pluginName = "bodycam", -- name your plugin here
     pluginAuthor = "digitalfire", -- author
-    configVersion = "1.0",
+    configVersion = "1.1",
 
     -- The command name to toggle your body camera on or off.
     command="bodycam",
