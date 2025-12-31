@@ -1,9 +1,9 @@
 {
-  "resource": "3.2.25",
+  "resource": "3.2.26",
   "testedFxServerVersion": "5932",
   "submoduleConfigs": {
     "bodycam": {
-      "version": "1.0",
+      "version": "1.1",
       "requiresPlugins": [
         {
           "name": "locations",
