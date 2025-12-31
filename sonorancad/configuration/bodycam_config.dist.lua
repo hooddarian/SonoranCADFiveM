@@ -47,7 +47,7 @@ local config = {
     beepType = "nui",
 
     -- Adjusts the frequency at which unit body camera beeps when turned on(in milliseconds).
-    beepFrequency = 10000,
+    beepFrequency = 60000,
 
     -- Adjusts the range at which a person can hear the bodycam beeps
     beepRange = 19.99,

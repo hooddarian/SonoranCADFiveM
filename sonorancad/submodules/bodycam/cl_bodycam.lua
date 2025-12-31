@@ -2,7 +2,7 @@ bodyCamOn = false
 local showOverlay = true
 local doAnimation = true
 screenshotFrequency = 2000
-local soundLevel = 0.3
+local soundLevel = 0.2
 CreateThread(function()
     Config.LoadPlugin("bodycam", function(pluginConfig)
         if pluginConfig.enabled then
