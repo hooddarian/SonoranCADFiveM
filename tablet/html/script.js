@@ -341,7 +341,7 @@ $(function () {
 		}
 	}, true);
 
-	window.addEventListener("message", receiveMessage, false);
+window.addEventListener("message", receiveMessage, false);
 	
 	window.addEventListener('blur', function() {
 		const draggingElements = document.querySelectorAll('.dragging');
@@ -465,6 +465,24 @@ function receiveMessage(event) {
 	if (currentlyCheckingApi && event.origin == frameorigin) {
 		$.post('https://tablet/SetAPIInformation', JSON.stringify(event.data));
 		$("#check-api-id").hide();
+	}
+
+	// Forward caddisplay screenshot requests to the CAD iframe
+	if (event.data && event.data.type === "caddisplay_screenshot_request") {
+		if (cadframe && cadframe.contentWindow) {
+			cadframe.contentWindow.postMessage({
+				type: "scad:screenshot:request",
+				requestId: event.data.requestId
+			}, "*");
+		}
+	}
+
+	// Forward CAD iframe responses back to the game client
+	if (event.data && event.data.type === "scad:screenshot:response") {
+		$.post('https://tablet/CadDisplayScreenshot', JSON.stringify({
+			requestId: event.data.requestId,
+			image: event.data.image
+		}));
 	}
 }
 

@@ -267,6 +267,19 @@ RegisterCommand("checkapiid", function(source,args,rawCommand)
 end, false)
 
 local activeTablet = nil
+local function sendCadScreenshotRequest(requestId)
+	SendNUIMessage({
+		type = "caddisplay_screenshot_request",
+		requestId = requestId
+	})
+end
+
+-- Request a CAD screenshot (for caddisplay) and forward responses back via a client event.
+RegisterNetEvent("SonoranCAD::Tablet::RequestCadScreenshot")
+AddEventHandler("SonoranCAD::Tablet::RequestCadScreenshot", function(requestId)
+	if not requestId then return end
+	sendCadScreenshotRequest(requestId)
+end)
 
 -- Helper to load an animation dictionary
 local function ensureAnimDict(dictName)
@@ -392,4 +405,9 @@ end)
 RegisterNetEvent("sonoran:tablet:failed")
 AddEventHandler("sonoran:tablet:failed", function(message)
 	errorLog("Failed to set API ID: "..tostring(message))
+end)
+
+RegisterNUICallback("CadDisplayScreenshot", function(data, cb)
+	TriggerEvent("SonoranCAD::Tablet::CadScreenshotResponse", data.requestId, data.image)
+	if cb then cb({ ok = true }) end
 end)
