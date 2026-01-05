@@ -2,7 +2,7 @@ bodyCamOn = false
 local showOverlay = true
 local doAnimation = true
 screenshotFrequency = 2000
-local soundLevel = 0.3
+local soundLevel = 0.2
 CreateThread(function()
     Config.LoadPlugin("bodycam", function(pluginConfig)
         if pluginConfig.enabled then
@@ -51,6 +51,20 @@ CreateThread(function()
                     SendNUIMessage({
                         type = 'playSound',
                         transactionFile = 'sounds/beeps.mp3',
+                        transactionVolume = soundLevel
+                    })
+                end
+            end
+
+            function PlayOffBeep()
+                if pluginConfig.beepType == 'native' then
+                    local coord = GetEntityCoords(GetPlayerPed(PlayerId()))
+                    PlaySoundFromCoord(-1, 'Beep_Green', coord.x, coord.y, coord.z,
+                        'DLC_HEIST_HACKING_SNAKE_SOUNDS', false, 0, false)
+                else
+                    SendNUIMessage({
+                        type = 'playSound',
+                        transactionFile = 'sounds/beep_off.mp3',
                         transactionVolume = soundLevel
                     })
                 end
@@ -115,6 +129,11 @@ CreateThread(function()
                     if pluginConfig.enableBeeps then
                         if bodyCamOn then
                             PlayBeepSound()
+                            if pluginConfig.enablePadShake then
+                                SetPadShake(0, 300, 255)
+                                Wait(500)
+                                SetPadShake(0, 300, 255)
+                            end
                             TriggerServerEvent('SonoranCAD::bodycam::RequestSound')
                             Wait(pluginConfig.beepFrequency)
                         end
@@ -173,7 +192,10 @@ CreateThread(function()
                         TriggerServerEvent('SonoranCAD::core::bodyCamOff')
                         TriggerEvent('chat:addMessage',
                             { args = { 'Sonoran Bodycam', 'Bodycam disabled' } })
-                        PlayBeepSound()
+                        PlayOffBeep()
+                        if pluginConfig.enablePadShake then
+                            SetPadShake(0, 2000, 200)
+                        end
                     elseif toggle and not bodyCamOn then
                         bodyCamOn = true
                         if showOverlay then
