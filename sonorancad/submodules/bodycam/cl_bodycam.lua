@@ -56,6 +56,20 @@ CreateThread(function()
                 end
             end
 
+            function PlayOffBeep()
+                if pluginConfig.beepType == 'native' then
+                    local coord = GetEntityCoords(GetPlayerPed(PlayerId()))
+                    PlaySoundFromCoord(-1, 'Beep_Green', coord.x, coord.y, coord.z,
+                        'DLC_HEIST_HACKING_SNAKE_SOUNDS', false, 0, false)
+                else
+                    SendNUIMessage({
+                        type = 'playSound',
+                        transactionFile = 'sounds/beep_off.mp3',
+                        transactionVolume = soundLevel
+                    })
+                end
+            end
+
             AddEventHandler('playerSpawned', function()
                 TriggerServerEvent('SonoranCAD::bodycam::Request')
             end)
@@ -115,6 +129,11 @@ CreateThread(function()
                     if pluginConfig.enableBeeps then
                         if bodyCamOn then
                             PlayBeepSound()
+                            if pluginConfig.enablePadShake then
+                                SetPadShake(0, 300, 255)
+                                Wait(500)
+                                SetPadShake(0, 300, 255)
+                            end
                             TriggerServerEvent('SonoranCAD::bodycam::RequestSound')
                             Wait(pluginConfig.beepFrequency)
                         end
@@ -173,7 +192,10 @@ CreateThread(function()
                         TriggerServerEvent('SonoranCAD::core::bodyCamOff')
                         TriggerEvent('chat:addMessage',
                             { args = { 'Sonoran Bodycam', 'Bodycam disabled' } })
-                        PlayBeepSound()
+                        PlayOffBeep()
+                        if pluginConfig.enablePadShake then
+                            SetPadShake(0, 2000, 200)
+                        end
                     elseif toggle and not bodyCamOn then
                         bodyCamOn = true
                         if showOverlay then

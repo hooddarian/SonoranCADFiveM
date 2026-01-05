@@ -10,7 +10,7 @@ local config = {
     enabled = true,
     pluginName = "bodycam", -- name your plugin here
     pluginAuthor = "digitalfire", -- author
-    configVersion = "1.1",
+    configVersion = "1.2",
 
     -- The command name to toggle your body camera on or off.
     command="bodycam",
@@ -51,6 +51,9 @@ local config = {
 
     -- Adjusts the range at which a person can hear the bodycam beeps
     beepRange = 19.99,
+
+    -- Enables or disables controller vibration during bodycam beeps.
+    enablePadShake = true,
 
     -- Adjusts the frequency at which unit body cameras update (in milliseconds).
     screenshotFrequency=2000,
