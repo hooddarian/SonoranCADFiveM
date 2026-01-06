@@ -11,18 +11,46 @@ CreateThread(function()
             local displayModel = "prop_laptop_jimmy"
             local displayTexture = "prop_jimmy_screen"
             local displayModelHash = GetHashKey(displayModel)
-            local builtinScreens = {}
-            for _, entry in ipairs(pluginConfig.builtinScreens or {}) do
-                local veh = entry.vehicle and string.upper(entry.vehicle) or nil
-                local screenTexture = entry.screenTexture
-                if veh and veh ~= "" and screenTexture then
-                    local texW = tonumber(entry.textureWidth) or 512
-                    local texH = tonumber(entry.textureHeight) or 256
-                    local sx = texW / 512.0
-                    local sy = texH / 256.0
-                    builtinScreens[veh] = {texture = screenTexture, scale = {x = sx, y = sy, z = 1.0}}
-                end
+        local builtinScreens = {}
+        local builtinScreensByHash = {}
+        local allowlistHashes = {}
+        for _, v in pairs(pluginConfig.allowlistedCars or {}) do
+            if v and v ~= "" then
+                allowlistHashes[GetHashKey(v)] = true
             end
+        end
+        for _, entry in ipairs(pluginConfig.builtinScreens or {}) do
+            local veh = entry.vehicle and string.upper(entry.vehicle) or nil
+            local screenTexture = entry.screenTexture
+            if veh and veh ~= "" and screenTexture then
+                local vehHash = GetHashKey(veh)
+                local texW = entry.textureWidth
+                local texH = entry.textureHeight
+                if type(texW) == "string" and not tonumber(texW) then
+                    local w, h = texW:match("(%d+)%s*[xX]%s*(%d+)")
+                    if w and h then
+                        texW = tonumber(w)
+                        texH = tonumber(h)
+                    end
+                elseif type(texW) == "table" then
+                    texH = texH or texW.y or texW.height or texW[2]
+                    texW = texW.x or texW.width or texW[1]
+                end
+                if type(texH) == "string" and not tonumber(texH) then
+                    local _, h = texH:match("(%d+)%s*[xX]%s*(%d+)")
+                    texH = h or texH
+                elseif type(texH) == "table" then
+                    texH = texH.y or texH.height or texH[2] or texH[1]
+                end
+                texW = tonumber(texW) or 512
+                texH = tonumber(texH) or 256
+                local sx = texW / 512.0
+                local sy = texH / 256.0
+                local cfg = {texture = screenTexture, scale = {x = sx, y = sy, z = 1.0}, model = veh, modelHash = vehHash}
+                builtinScreens[veh] = cfg
+                builtinScreensByHash[vehHash] = cfg
+            end
+        end
             local placementDb = {}
             local spawnedDisplays = {}
             local vehiclesWithDisplays = {}
@@ -109,14 +137,15 @@ CreateThread(function()
             end
 
             local function isVehicleBlocked(veh)
-                local model = GetDisplayNameFromVehicleModel(GetEntityModel(veh))
-                for _, v in pairs(pluginConfig.allowlistedCars or {}) do
-                    if v == model then
-                        if pluginConfig.general.useAllowlistAsBlacklist then
-                            return true
-                        else
-                            return false
-                        end
+                local modelHash = GetEntityModel(veh)
+                if builtinScreensByHash and builtinScreensByHash[modelHash] then
+                    return false
+                end
+                if allowlistHashes and allowlistHashes[modelHash] then
+                    if pluginConfig.general.useAllowlistAsBlacklist then
+                        return true
+                    else
+                        return false
                     end
                 end
                 return not pluginConfig.general.useAllowlistAsBlacklist
@@ -185,11 +214,8 @@ CreateThread(function()
                 if not DoesEntityExist(veh) then
                     return nil
                 end
-                local model = GetDisplayNameFromVehicleModel(GetEntityModel(veh))
-                if not model then
-                    return nil
-                end
-                return builtinScreens[string.upper(model)]
+                local modelHash = GetEntityModel(veh)
+                return builtinScreensByHash[modelHash] or nil
             end
 
             local function applyConfiguredScale(obj, scaleCfg)
@@ -234,6 +260,10 @@ CreateThread(function()
                 if not DoesEntityExist(veh) then
                     return nil
                 end
+                local builtinCfg = getBuiltinScreenConfig(veh)
+                if builtinCfg then
+                    return veh
+                end
                 local vehNet = getVehNetId(veh)
                 if vehNet ~= nil then
                     for _, car in ipairs(vehiclesWithDisplays) do
@@ -273,7 +303,7 @@ CreateThread(function()
                 CreateRuntimeTextureFromDuiHandle(txd, "caddisplay_screen_tex", duiHandle)
                 AddReplaceTexture(displayModel, displayTexture, "caddisplay_screen", "caddisplay_screen_tex")
                 for _, cfg in pairs(builtinScreens) do
-                    AddReplaceTexture(displayModel, cfg.texture, "caddisplay_screen", "caddisplay_screen_tex")
+                    AddReplaceTexture(cfg.model or displayModel, cfg.texture, "caddisplay_screen", "caddisplay_screen_tex")
                 end
                 table.insert(duiObjs, screenDui)
             end
@@ -363,7 +393,8 @@ CreateThread(function()
                 if veh ~= 0 and DoesEntityExist(prop) then
                     local propCoords = GetEntityCoords(prop)
                     local vehCoords = GetEntityCoords(veh)
-                    displayPosition = GetOffsetFromEntityGivenWorldCoords(veh, propCoords.x, propCoords.y, propCoords.z)
+                    local offset = GetOffsetFromEntityGivenWorldCoords(veh, propCoords.x, propCoords.y, propCoords.z)
+                    displayPosition = {x = offset.x, y = offset.y, z = offset.z}
                     local propRot = GetEntityRotation(prop, 2)
                     local vehRot = GetEntityRotation(veh, 2)
                     displayRotation = {
@@ -575,11 +606,7 @@ CreateThread(function()
                         local builtinCfg = getBuiltinScreenConfig(vehPedIn)
                         if builtinCfg and not isVehicleBlocked(vehPedIn) then
                             if not hasTrackedVehicle(vehiclesWithDisplays, vehPedIn) then
-                                local existingDisplay = findExistingDisplayForVehicle(vehPedIn)
-                                if existingDisplay ~= nil then
-                                    trackDisplayForVehicle(vehPedIn, existingDisplay)
-                                    applyConfiguredScale(existingDisplay, builtinCfg.scale)
-                                end
+                                trackDisplayForVehicle(vehPedIn, vehPedIn)
                             end
                             ensureDui()
                         else
@@ -665,15 +692,16 @@ CreateThread(function()
                     local veh = car.veh
                     local keep = false
                     if veh ~= nil and DoesEntityExist(veh) then
-                        local model = GetDisplayNameFromVehicleModel(GetEntityModel(veh))
-                        for _, entry in ipairs(placementDb) do
-                            if string.upper(entry.Vehicle) == string.upper(model) then
-                                keep = true
-                                break
+                        if getBuiltinScreenConfig(veh) then
+                            keep = true
+                        else
+                            local model = GetDisplayNameFromVehicleModel(GetEntityModel(veh))
+                            for _, entry in ipairs(placementDb) do
+                                if string.upper(entry.Vehicle) == string.upper(model) then
+                                    keep = true
+                                    break
+                                end
                             end
-                        end
-                        if not keep then
-                            keep = getBuiltinScreenConfig(veh) ~= nil
                         end
                     end
                     if not keep then
