@@ -154,6 +154,7 @@ end
 
 -- Remove NUI focus
 RegisterNUICallback('NUIFocusOff', function()
+	print('NUI Focus Off Received')
 	DisplayModule("cad", false)
 	toggleTabletDisplay(false)
 	SetFocused(false)

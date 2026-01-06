@@ -154,19 +154,32 @@ CreateThread(function()
                 return nil
             end
 
-                local function hasAnyOccupant(veh)
-                    if not DoesEntityExist(veh) then
-                        return false
-                    end
-                    local maxSeats = GetVehicleMaxNumberOfPassengers(veh)
-                for seat = -1, maxSeats do
-                    local ped = GetPedInVehicleSeat(veh, seat)
-                    if ped ~= 0 and DoesEntityExist(ped) then
-                        return true
-                    end
-                    end
-                    return false
+        local function hasAnyOccupant(veh)
+            if not DoesEntityExist(veh) then
+                return false
+            end
+            local maxSeats = GetVehicleMaxNumberOfPassengers(veh)
+            for seat = -1, maxSeats do
+                local ped = GetPedInVehicleSeat(veh, seat)
+                if ped ~= 0 and DoesEntityExist(ped) then
+                    return true
                 end
+            end
+            return false
+        end
+
+        local function getSeatIndexForPed(veh, ped)
+            if veh == 0 or not DoesEntityExist(veh) then
+                return nil
+            end
+            local maxSeats = GetVehicleMaxNumberOfPassengers(veh)
+            for seat = -1, maxSeats do
+                if GetPedInVehicleSeat(veh, seat) == ped then
+                    return seat
+                end
+            end
+            return nil
+        end
 
             local function getBuiltinScreenConfig(veh)
                 if not DoesEntityExist(veh) then
@@ -764,7 +777,8 @@ CreateThread(function()
                     return
                 end
 
-                TriggerServerEvent("SonoranCAD::caddisplay::ClaimDisplay", vehNet)
+                local seat = getSeatIndexForPed(veh, ped)
+                TriggerServerEvent("SonoranCAD::caddisplay::ClaimDisplay", vehNet, seat)
                 notify("You are now controlling this CAD display.")
                 claimedOnce[tostring(vehNet)] = true
             end, false)

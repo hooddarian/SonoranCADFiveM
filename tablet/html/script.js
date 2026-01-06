@@ -9,8 +9,20 @@ var CallCache = {
 
 var maxrows = 10;
 
-const resourceName = typeof GetParentResourceName === "function" ? GetParentResourceName() : "tablet";
-const nui = (eventName, payload) => $.post(`https://${resourceName}/${eventName}`, JSON.stringify(payload || {}));
+let cachedResourceName = null;
+const isCfxNui = () => (typeof GetParentResourceName === "function") || (typeof window.invokeNative === "function");
+const getResourceName = () => {
+	if (cachedResourceName) return cachedResourceName;
+	if (typeof GetParentResourceName === "function") {
+		cachedResourceName = GetParentResourceName();
+		return cachedResourceName;
+	}
+	return "tablet";
+};
+const nui = (eventName, payload) => {
+	if (!isCfxNui()) return;
+	return $.post(`https://${getResourceName()}/${eventName}`, JSON.stringify(payload || {})).fail(() => {});
+};
 
 const KeyMaps = {
 	previous: "",
@@ -299,15 +311,15 @@ $(function () {
 		}
 	});
 
-	document.getElementById('cadFrame').onkeyup = function (data) {
-		switch (data.which) {
-			case 27:
-				nui('NUIFocusOff', {});
-				break;
-			default:
-				break;
-		}
-	}
+	// document.getElementById('cadFrame').onkeyup = function (data) {
+	// 	switch (data.which) {
+	// 		case 27:
+	// 			nui('NUIFocusOff', {});
+	// 			break;
+	// 		default:
+	// 			break;
+	// 	}
+	// }
 
 	document.onkeyup = function (data) {
 		switch (data.which) {
@@ -333,7 +345,7 @@ $(function () {
 			}
 		}
 	}, true);
-	
+
 	document.addEventListener('mouseover', function(e) {
 		const draggingElements = document.querySelectorAll('.dragging');
 		if (draggingElements.length > 0) {
@@ -346,7 +358,7 @@ $(function () {
 	}, true);
 
 window.addEventListener("message", receiveMessage, false);
-	
+
 	window.addEventListener('blur', function() {
 		const draggingElements = document.querySelectorAll('.dragging');
 		if (draggingElements.length > 0) {
@@ -369,7 +381,7 @@ function dragElement(elmnt) {
 	var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
 	var isDragging = false;
 	var dragOverlay = null;
-	
+
 	if (document.getElementById(elmnt.id + "header")) {
 		// if present, the header is where you move the DIV from:
 		document.getElementById(elmnt.id + "header").onmousedown = dragMouseDown;
@@ -382,16 +394,16 @@ function dragElement(elmnt) {
 		e = e || window.event;
 		e.preventDefault();
 		e.stopPropagation();
-		
+
 		// get the mouse cursor position at startup:
 		pos3 = e.clientX;
 		pos4 = e.clientY;
 		isDragging = true;
-		
+
 		elmnt.classList.add('dragging');
-		
+
 		createDragOverlay();
-		
+
 		document.onmouseup = closeDragElement;
 		// call a function whenever the cursor moves:
 		document.onmousemove = elementDrag;
@@ -401,9 +413,9 @@ function dragElement(elmnt) {
 		e = e || window.event;
 		e.preventDefault();
 		e.stopPropagation();
-		
+
 		if (!isDragging) return;
-		
+
 		// calculate the new cursor position:
 		pos1 = pos3 - e.clientX;
 		pos2 = pos4 - e.clientY;
@@ -422,10 +434,10 @@ function dragElement(elmnt) {
 		document.onmouseup = null;
 		document.onmousemove = null;
 	}
-	
+
 	function createDragOverlay() {
 		removeDragOverlay();
-		
+
 		dragOverlay = document.createElement('div');
 		dragOverlay.id = 'dragOverlay';
 		dragOverlay.style.cssText = `
@@ -439,13 +451,13 @@ function dragElement(elmnt) {
 			pointer-events: none;
 		`;
 		document.body.appendChild(dragOverlay);
-		
+
 		const cadFrame = document.getElementById('cadFrame');
 		if (cadFrame) {
 			cadFrame.style.pointerEvents = 'none';
 		}
 	}
-	
+
 	function removeDragOverlay() {
 		if (dragOverlay) {
 			if (dragOverlay.parentNode) {
@@ -453,7 +465,7 @@ function dragElement(elmnt) {
 			}
 			dragOverlay = null;
 		}
-		
+
 		const cadFrame = document.getElementById('cadFrame');
 		if (cadFrame) {
 			cadFrame.style.pointerEvents = 'auto';
