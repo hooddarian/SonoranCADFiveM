@@ -141,6 +141,10 @@
 					console.log("Forwarding message to recordPrinterFrame:", event.data);
 					recordPrinterFrame.contentWindow.postMessage(event.data, "*");
 				}
+				if (event.data.cadDisplay) {
+					console.log("Forwarding message to cadDisplayFrame:", event.data);
+					cadDisplayFrame.contentWindow.postMessage(event.data.cadDisplay, "*");
+				}
 				if (event.data.type == "playSound") {
 					if (audioPlayer != null) {
 						audioPlayer.pause();

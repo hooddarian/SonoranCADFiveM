@@ -251,7 +251,7 @@ RegisterCommand("showcad", function(source, args, rawCommand)
 end, false)
 RegisterKeyMapping('showcad', 'CAD Tablet', 'keyboard', '')
 
-TriggerEvent('chat:addSuggestion', '/cadsize', "Resize CAD to specific width and height in pixels. Default is 1100x510", {
+TriggerEvent('chat:addSuggestion', '/cadsize', "Resize CAD to specific width and height in pixels. Default is 1280x640 (16:9-ish)", {
 	{ name="Width", help="Width in pixels" }, { name="Height", help="Height in pixels" }
 })
 RegisterCommand("cadsize", function(source,args,rawCommand)

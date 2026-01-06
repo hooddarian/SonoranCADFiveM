@@ -185,7 +185,14 @@ CreateThread(function()
                     pitch = tonumber(data.rotation and data.rotation.x) or 0,
                     roll = tonumber(data.rotation and data.rotation.y) or 0,
                     yaw = tonumber(data.rotation and data.rotation.z) or 0
-                }
+                },
+                Scale = {
+                    x = tonumber(data.scale and data.scale.x) or 1,
+                    y = tonumber(data.scale and data.scale.y) or 1,
+                    z = tonumber(data.scale and data.scale.z) or 1
+                },
+                Variant = tonumber(data.variant) or 1,
+                DisplayModel = data.displayModel
             }
 
             table.insert(placements, placement)
@@ -242,20 +249,7 @@ CreateThread(function()
             end
         end)
 
-        local function getSeatIndexForPed(veh, ped)
-            if veh == 0 or not DoesEntityExist(veh) then
-                return nil
-            end
-            local maxSeats = GetVehicleMaxNumberOfPassengers(veh)
-            for seat = -1, maxSeats do
-                if GetPedInVehicleSeat(veh, seat) == ped then
-                    return seat
-                end
-            end
-            return nil
-        end
-
-        RegisterNetEvent("SonoranCAD::caddisplay::ClaimDisplay", function(vehNet)
+        RegisterNetEvent("SonoranCAD::caddisplay::ClaimDisplay", function(vehNet, claimedSeat)
             if not vehNet then
                 return
             end
@@ -266,7 +260,7 @@ CreateThread(function()
                 return
             end
 
-            local seat = getSeatIndexForPed(veh, GetPlayerPed(src))
+            local seat = tonumber(claimedSeat)
             local owner = displayOwners[tostring(vehNet)]
 
             if owner == nil then
@@ -347,14 +341,8 @@ CreateThread(function()
             syncPlacements(playerId)
             syncOwners(playerId)
         end)
-
-        AddEventHandler("onResourceStart", function(res)
-            if res ~= GetCurrentResourceName() then
-                return
-            end
-            loadPlacements()
-            syncPlacements()
-            syncOwners()
-        end)
+        loadPlacements()
+        syncPlacements()
+        syncOwners()
     end)
 end)

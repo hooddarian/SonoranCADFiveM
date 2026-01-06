@@ -14,6 +14,18 @@ CreateThread(function()
         local displayModel = "prop_laptop_jimmy"
         local displayTexture = "prop_jimmy_screen"
         local displayModelHash = GetHashKey(displayModel)
+        local builtinScreens = {}
+        for _, entry in ipairs(pluginConfig.builtinScreens or {}) do
+            local veh = entry.vehicle and string.upper(entry.vehicle) or nil
+            local screenTexture = entry.screenTexture
+            if veh and veh ~= "" and screenTexture then
+                local texW = tonumber(entry.textureWidth) or 512
+                local texH = tonumber(entry.textureHeight) or 256
+                local sx = texW / 512.0
+                local sy = texH / 256.0
+                builtinScreens[veh] = {texture = screenTexture, scale = {x = sx, y = sy, z = 1.0}}
+            end
+        end
         local placementDb = {}
         local spawnedDisplays = {}
         local vehiclesWithDisplays = {}
@@ -145,18 +157,44 @@ CreateThread(function()
             return nil
         end
 
-        local function hasAnyOccupant(veh)
-            if not DoesEntityExist(veh) then
-                return false
-            end
-            local maxSeats = GetVehicleMaxNumberOfPassengers(veh)
+            local function hasAnyOccupant(veh)
+                if not DoesEntityExist(veh) then
+                    return false
+                end
+                local maxSeats = GetVehicleMaxNumberOfPassengers(veh)
             for seat = -1, maxSeats do
                 local ped = GetPedInVehicleSeat(veh, seat)
                 if ped ~= 0 and DoesEntityExist(ped) then
                     return true
                 end
+                end
+                return false
             end
-            return false
+
+        local function getBuiltinScreenConfig(veh)
+            if not DoesEntityExist(veh) then
+                return nil
+            end
+            local model = GetDisplayNameFromVehicleModel(GetEntityModel(veh))
+            if not model then
+                return nil
+            end
+            return builtinScreens[string.upper(model)]
+        end
+
+        local function applyConfiguredScale(obj, scaleCfg)
+            if not scaleCfg or not DoesEntityExist(obj) then
+                return
+            end
+            local sx = tonumber(scaleCfg.x) or 1.0
+            local sy = tonumber(scaleCfg.y) or 1.0
+            local sz = tonumber(scaleCfg.z) or 1.0
+            local right, forward, up, at = GetEntityMatrix(obj)
+            SetEntityMatrix(obj,
+                right.x * sx, right.y * sx, right.z * sx,
+                forward.x * sy, forward.y * sy, forward.z * sy,
+                up.x * sz, up.y * sz, up.z * sz,
+                at.x, at.y, at.z)
         end
 
         local function drawWorldPrompt(pos, text)
@@ -224,6 +262,9 @@ CreateThread(function()
             local txd = CreateRuntimeTxd("caddisplay_screen")
             CreateRuntimeTextureFromDuiHandle(txd, "caddisplay_screen_tex", duiHandle)
             AddReplaceTexture(displayModel, displayTexture, "caddisplay_screen", "caddisplay_screen_tex")
+            for _, cfg in pairs(builtinScreens) do
+                AddReplaceTexture(displayModel, cfg.texture, "caddisplay_screen", "caddisplay_screen_tex")
+            end
             table.insert(duiObjs, screenDui)
         end
 
@@ -521,18 +562,30 @@ CreateThread(function()
                 Wait(2500)
                 local vehPedIn = GetVehiclePedIsIn(PlayerPedId(), false)
                 if vehPedIn ~= 0 and isPlayerInVeh(vehPedIn) then
-                    local placement = getPlacementForVehicle(vehPedIn)
-                    if placement and not isVehicleBlocked(vehPedIn) then
+                    local builtinCfg = getBuiltinScreenConfig(vehPedIn)
+                    if builtinCfg and not isVehicleBlocked(vehPedIn) then
                         if not hasTrackedVehicle(vehiclesWithDisplays, vehPedIn) then
                             local existingDisplay = findExistingDisplayForVehicle(vehPedIn)
                             if existingDisplay ~= nil then
                                 trackDisplayForVehicle(vehPedIn, existingDisplay)
-                            else
-                                local obj = spawnDisplay(vehPedIn)
-                                attachDisplayToVehicle(obj, vehPedIn, placement)
+                                applyConfiguredScale(existingDisplay, builtinCfg.scale)
                             end
                         end
                         ensureDui()
+                    else
+                        local placement = getPlacementForVehicle(vehPedIn)
+                        if placement and not isVehicleBlocked(vehPedIn) then
+                            if not hasTrackedVehicle(vehiclesWithDisplays, vehPedIn) then
+                                local existingDisplay = findExistingDisplayForVehicle(vehPedIn)
+                                if existingDisplay ~= nil then
+                                    trackDisplayForVehicle(vehPedIn, existingDisplay)
+                                else
+                                    local obj = spawnDisplay(vehPedIn)
+                                    attachDisplayToVehicle(obj, vehPedIn, placement)
+                                end
+                            end
+                            ensureDui()
+                        end
                     end
                 end
             end
@@ -607,6 +660,9 @@ CreateThread(function()
                             keep = true
                             break
                         end
+                    end
+                    if not keep then
+                        keep = getBuiltinScreenConfig(veh) ~= nil
                     end
                 end
                 if not keep then
@@ -791,3 +847,4 @@ CreateThread(function()
         end)
     end)
 end)
+

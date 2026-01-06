@@ -9,6 +9,9 @@ var CallCache = {
 
 var maxrows = 10;
 
+const resourceName = typeof GetParentResourceName === "function" ? GetParentResourceName() : "tablet";
+const nui = (eventName, payload) => $.post(`https://${resourceName}/${eventName}`, JSON.stringify(payload || {}));
+
 const KeyMaps = {
 	previous: "",
 	attach: "",
@@ -173,7 +176,7 @@ function attach() {
 			// Detach from other calls.
 			if (isAttached(call)) {
 				console.log("Detaching from call #" + call.dispatch.callId);
-				$.post('https://tablet/DetachFromCall', JSON.stringify({callId: call.dispatch.callId}));
+				nui('DetachFromCall', {callId: call.dispatch.callId});
 			}
 		}
 	} else {
@@ -181,25 +184,26 @@ function attach() {
 			// Detach from other calls.
 			if (isAttached(call)) {
 				console.log("Detaching from call #" + call.dispatch.callId);
-				$.post('https://tablet/DetachFromCall', JSON.stringify({callId: call.dispatch.callId}));
+				nui('DetachFromCall', {callId: call.dispatch.callId});
 			}
 		}
 		// Attach to the current call.
-		$.post('https://tablet/AttachToCall', JSON.stringify({callId: CallCache.active[currCall].dispatch.callId}));
+		nui('AttachToCall', {callId: CallCache.active[currCall].dispatch.callId});
 	}
 }
 
 function moduleVisible(module, visible) {
+	const el = $("#" + module + "Div");
 	if (visible) {
-		$("#"+ module + "Div").show();
+		el.css({ opacity: 1, pointerEvents: "auto" });
 	} else {
-		$("#"+ module + "Div").hide();
+		el.css({ opacity: 0, pointerEvents: "none" });
 	}
-	$.post('https://tablet/VisibleEvent', JSON.stringify({ state: visible, module: module }));
+	nui('VisibleEvent', { state: visible, module: module });
 }
 
 function showHelp() {
-	$.post('https://tablet/ShowHelp');
+	nui('ShowHelp');
 }
 
 $(function () {
@@ -298,7 +302,7 @@ $(function () {
 	document.getElementById('cadFrame').onkeyup = function (data) {
 		switch (data.which) {
 			case 27:
-				$.post('https://tablet/NUIFocusOff', JSON.stringify({}));
+				nui('NUIFocusOff', {});
 				break;
 			default:
 				break;
@@ -308,7 +312,7 @@ $(function () {
 	document.onkeyup = function (data) {
 		switch (data.which) {
 			case 27:
-				$.post('https://tablet/NUIFocusOff', JSON.stringify({}));
+				nui('NUIFocusOff', {});
 				break;
 			default:
 				break;
@@ -463,7 +467,7 @@ function receiveMessage(event) {
 	let frameorigin = new URL(cadframe.src).origin;
 
 	if (currentlyCheckingApi && event.origin == frameorigin) {
-		$.post('https://tablet/SetAPIInformation', JSON.stringify(event.data));
+		nui('SetAPIInformation', event.data);
 		$("#check-api-id").hide();
 	}
 
@@ -479,24 +483,24 @@ function receiveMessage(event) {
 
 	// Forward CAD iframe responses back to the game client
 	if (event.data && event.data.type === "scad:screenshot:response") {
-		$.post('https://tablet/CadDisplayScreenshot', JSON.stringify({
+		nui('CadDisplayScreenshot', {
 			requestId: event.data.requestId,
 			image: event.data.image
-		}));
+		});
 	}
 }
 
 function addCallNote(call, data) {
-	$.post('https://tablet/addCallNote', JSON.stringify(call), JSON.stringify(data));
+	nui('addCallNote', {call: call, data: data});
 }
 
 function runApiCheck() {
 	currentlyCheckingApi = true;
 	document.getElementById("cadFrame").src += '';
-	$.post('https://tablet/runApiCheck');
+	nui('runApiCheck');
 	$("#check-api-data").hide();
 }
 
 document.getElementById('homeButton').addEventListener('click', function() {
-	$.post('https://tablet/NUIFocusOff', JSON.stringify({}));
+	nui('NUIFocusOff', {});
 });

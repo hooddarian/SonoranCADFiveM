@@ -42,7 +42,7 @@ local config = {
 
     commands = {
         cadDisplayMenu = "caddisplay",
-        restricted = true -- should the CAD display menu be restricted?
+        restricted = false -- should the CAD display menu be restricted?
     },
 
     permissionMode = "ace", -- Available Options: ace, framework, custom
@@ -74,6 +74,17 @@ local config = {
     general = {
         notificationType = "native", -- Options: native, pNotify, okokNotify
         useAllowlistAsBlacklist = false -- If true, allowlistedCars is treated as a blacklist
+    },
+
+    -- Vehicles with built-in laptop screens you want to skin with the CAD DUI
+    -- Each entry needs:
+    --   vehicle         - spawn code (model name) for the vehicle
+    --   screenTexture   - texture name on the built-in laptop model to replace with the DUI
+    --   textureWidth    - optional width of the built-in texture in pixels (used to scale the DUI), default 512
+    --   textureHeight   - optional height of the built-in texture in pixels (used to scale the DUI), default 256
+    builtinScreens = {
+        -- Example:
+        -- {vehicle = "POLICE", screenTexture = "laptop_screen", textureWidth = 512, textureHeight = 256}
     },
 
     allowlistedCars = {
