@@ -42,7 +42,7 @@ local config = {
 
     commands = {
         cadDisplayMenu = "caddisplay",
-        restricted = false -- should the CAD display menu be restricted?
+        restricted = true -- should the CAD display menu be restricted?
     },
 
     permissionMode = "ace", -- Available Options: ace, framework, custom

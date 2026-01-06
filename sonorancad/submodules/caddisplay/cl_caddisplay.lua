@@ -687,14 +687,19 @@ CreateThread(function()
                 end
             end)
 
-            RegisterNetEvent("SonoranCAD::caddisplay::SyncOwners", function(serverOwners)
-                displayOwners = serverOwners or {}
-                for vehNet, owner in pairs(displayOwners) do
-                    if owner ~= nil then
-                        claimedOnce[vehNet] = true
+        RegisterNetEvent("SonoranCAD::caddisplay::SyncOwners", function(serverOwners)
+            displayOwners = serverOwners or {}
+            local me = GetPlayerServerId(PlayerId())
+            for vehNet, owner in pairs(displayOwners) do
+                if owner ~= nil then
+                    local key = tostring(vehNet)
+                    claimedOnce[key] = true
+                    if owner == me then
+                        notify("You now have control of the CAD display.")
                     end
                 end
-            end)
+            end
+        end)
 
             RegisterNetEvent("SonoranCAD::Tablet::CadScreenshotResponse", function(requestId, image)
                 local meta = activeRequests[requestId]
@@ -779,8 +784,6 @@ CreateThread(function()
 
                 local seat = getSeatIndexForPed(veh, ped)
                 TriggerServerEvent("SonoranCAD::caddisplay::ClaimDisplay", vehNet, seat)
-                notify("You are now controlling this CAD display.")
-                claimedOnce[tostring(vehNet)] = true
             end, false)
 
             RegisterKeyMapping("SonoranCAD::caddisplay::Interact", "Interact with CAD Display", "keyboard", interactKeybind)
