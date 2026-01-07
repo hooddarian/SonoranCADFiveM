@@ -25,7 +25,7 @@ Citizen.CreateThread(function()
 	if apiMode == 1 then
 		tabletURL = "https://sonorancad.com/"
 	elseif apiMode == 0 then
-		tabletURL = "https://cad.dev.sonoransoftware.com/"
+		tabletURL = "https://https://staging.dev.sonorancad.com/"
 	end
 	local convar = GetConvar("sonorantablet_cadUrl", tabletURL)
 	local comId = convar:match("comid=(%w+)")

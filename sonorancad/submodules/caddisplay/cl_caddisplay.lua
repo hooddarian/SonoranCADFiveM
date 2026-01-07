@@ -739,6 +739,9 @@ CreateThread(function()
                     return
                 end
                 updateDui({type = "cad_image", image = image})
+                if meta.vehNet ~= nil then
+                    TriggerServerEvent("SonoranCAD::caddisplay::BroadcastCadScreenshot", meta.vehNet, image)
+                end
             end)
 
             RegisterNetEvent("SonoranCAD::caddisplay::ControlRequest", function(data)
@@ -845,7 +848,6 @@ CreateThread(function()
                     end
                     local now = GetGameTimer()
                     local ped = PlayerPedId()
-                    local localVeh = GetVehiclePedIsIn(ped, false)
                     local localServerId = GetPlayerServerId(PlayerId())
 
                     for _, car in ipairs(vehiclesWithDisplays) do
@@ -855,11 +857,11 @@ CreateThread(function()
                             car.veh = veh
                         end
 
-                        if veh ~= 0 and DoesEntityExist(veh) and hasAnyOccupant(veh) then
+                        if veh ~= 0 and DoesEntityExist(veh) then
                             local vehNet = getVehNetIdOrNil(veh)
                             local ownerId = vehNet and displayOwners[tostring(vehNet)] or nil
                             local prop = car.prop
-                            if prop ~= nil and DoesEntityExist(prop) and ownerId == nil then
+                            if prop ~= nil and DoesEntityExist(prop) and ownerId == nil and hasAnyOccupant(veh) then
                                 local distPrompt = #(GetEntityCoords(ped) - GetEntityCoords(prop))
                                 local promptKey = tostring(vehNet or prop)
                                 if distPrompt <= interactRange + 0.5 and not claimedOnce[promptKey] then
@@ -868,19 +870,13 @@ CreateThread(function()
                                 end
                             end
 
-                            local vehNet = getVehNetIdOrNil(veh)
-                            local ownerId = vehNet and displayOwners[tostring(vehNet)] or nil
-                            if ownerId ~= nil and ownerId == localServerId and veh == localVeh then
-                                local prop = car.prop
+                            if ownerId ~= nil and ownerId == localServerId then
                                 if prop ~= nil and DoesEntityExist(prop) then
-                                    local dist = #(GetEntityCoords(ped) - GetEntityCoords(prop))
-                                    if dist <= interactRange then
-                                        if (car._nextReq or 0) <= now then
-                                            local reqId = ("caddisplay-%s-%d"):format(ownerId, now)
-                                            activeRequests[reqId] = {vehNet = vehNet}
-                                            TriggerEvent("SonoranCAD::Tablet::RequestCadScreenshot", reqId)
-                                            car._nextReq = now + screenshotInterval
-                                        end
+                                    if (car._nextReq or 0) <= now then
+                                        local reqId = ("caddisplay-%s-%d"):format(ownerId, now)
+                                        activeRequests[reqId] = {vehNet = vehNet}
+                                        TriggerEvent("SonoranCAD::Tablet::RequestCadScreenshot", reqId)
+                                        car._nextReq = now + screenshotInterval
                                     end
                                 end
                             end

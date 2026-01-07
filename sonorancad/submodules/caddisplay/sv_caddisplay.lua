@@ -318,6 +318,24 @@ CreateThread(function()
                     {args = {"CAD Display", "You granted control of the CAD display."}})
             end)
 
+            RegisterNetEvent("SonoranCAD::caddisplay::BroadcastCadScreenshot", function(vehNet, image)
+                if not vehNet or not image or image == "" then
+                    return
+                end
+                local netId = tonumber(vehNet)
+                if not netId then
+                    return
+                end
+                local owner = displayOwners[tostring(netId)]
+                if owner ~= source then
+                    return
+                end
+                TriggerClientEvent("SonoranCAD::caddisplay::UpdateDui", -1, {
+                    type = "cad_image",
+                    image = image
+                })
+            end)
+
             AddEventHandler("playerDropped", function()
                 local changed = false
                 for vehNet, owner in pairs(displayOwners) do
