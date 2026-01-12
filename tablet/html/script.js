@@ -458,7 +458,7 @@ function dragElement(elmnt) {
 		}
 	}
 
-	function removeDragOverlay() {
+function removeDragOverlay() {
 		if (dragOverlay) {
 			if (dragOverlay.parentNode) {
 				dragOverlay.parentNode.removeChild(dragOverlay);
@@ -471,6 +471,34 @@ function dragElement(elmnt) {
 			cadFrame.style.pointerEvents = 'auto';
 		}
 	}
+}
+
+const SCREENSHOT_MAX_WIDTH = 512;
+const SCREENSHOT_MAX_HEIGHT = 256;
+const SCREENSHOT_QUALITY = 0.6;
+
+function downscaleCadScreenshot(dataUrl, done) {
+	if (!dataUrl || typeof dataUrl !== "string" || dataUrl.indexOf("data:image") !== 0) {
+		done(dataUrl);
+		return;
+	}
+
+	var img = new Image();
+	img.onload = function () {
+		var scale = Math.min(SCREENSHOT_MAX_WIDTH / img.width, SCREENSHOT_MAX_HEIGHT / img.height, 1);
+		var width = Math.max(1, Math.round(img.width * scale));
+		var height = Math.max(1, Math.round(img.height * scale));
+		var canvas = document.createElement("canvas");
+		canvas.width = width;
+		canvas.height = height;
+		var ctx = canvas.getContext("2d");
+		ctx.drawImage(img, 0, 0, width, height);
+		done(canvas.toDataURL("image/jpeg", SCREENSHOT_QUALITY));
+	};
+	img.onerror = function () {
+		done(dataUrl);
+	};
+	img.src = dataUrl;
 }
 
 function receiveMessage(event) {
@@ -495,9 +523,11 @@ function receiveMessage(event) {
 
 	// Forward CAD iframe responses back to the game client
 	if (event.data && event.data.type === "scad:screenshot:response") {
-		nui('CadDisplayScreenshot', {
-			requestId: event.data.requestId,
-			image: event.data.image
+		downscaleCadScreenshot(event.data.image, function (image) {
+			nui('CadDisplayScreenshot', {
+				requestId: event.data.requestId,
+				image: image
+			});
 		});
 	}
 }

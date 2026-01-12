@@ -1,5 +1,6 @@
 CallCache = {}
 EmergencyCache = {}
+local tabletScreens = {}
 
 CreateThread(function()
     while GetResourceState("sonorancad") ~= "started" do
@@ -109,6 +110,25 @@ CreateThread(function()
             end)
         else
             --print("Unable to detach... if api id is set properly, try relogging into cad.")
+        end
+    end)
+
+    RegisterNetEvent("SonoranCAD::tabletDisplay::BroadcastCadScreenshot", function(image)
+        if not image or image == "" then
+            return
+        end
+        local src = source
+        tabletScreens[src] = image
+        TriggerClientEvent("SonoranCAD::tabletDisplay::UpdateDui", -1, src, image)
+    end)
+
+    AddEventHandler("playerDropped", function()
+        tabletScreens[source] = nil
+    end)
+
+    AddEventHandler("playerJoining", function(playerId)
+        for owner, image in pairs(tabletScreens) do
+            TriggerClientEvent("SonoranCAD::tabletDisplay::UpdateDui", playerId, owner, image)
         end
     end)
 end)
