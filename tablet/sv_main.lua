@@ -119,7 +119,22 @@ CreateThread(function()
         end
         local src = source
         tabletScreens[src] = image
-        TriggerLatentClientEvent("SonoranCAD::tabletDisplay::UpdateDui", -1, 0, src, image)
+        local srcPed = GetPlayerPed(src)
+        if srcPed == 0 or not DoesEntityExist(srcPed) then
+            return
+        end
+        local srcCoords = GetEntityCoords(srcPed)
+        local updateRadius = 15.0
+        local updateRadiusSq = updateRadius * updateRadius
+        for _, playerId in ipairs(GetPlayers()) do
+            local ped = GetPlayerPed(playerId)
+            if ped ~= 0 and DoesEntityExist(ped) then
+                local pedCoords = GetEntityCoords(ped)
+                if #(pedCoords - srcCoords) <= updateRadius then
+                    TriggerLatentClientEvent("SonoranCAD::tabletDisplay::UpdateDui", playerId, 0, src, image)
+                end
+            end
+        end
     end)
 
     AddEventHandler("playerDropped", function()
@@ -127,8 +142,24 @@ CreateThread(function()
     end)
 
     AddEventHandler("playerJoining", function(playerId)
+        local joinPed = GetPlayerPed(playerId)
+        if joinPed == 0 or not DoesEntityExist(joinPed) then
+            return
+        end
+        local joinCoords = GetEntityCoords(joinPed)
+        local updateRadius = 15.0
+        local updateRadiusSq = updateRadius * updateRadius
         for owner, image in pairs(tabletScreens) do
-            TriggerLatentClientEvent("SonoranCAD::tabletDisplay::UpdateDui", playerId, 0, owner, image)
+            local ownerPed = GetPlayerPed(owner)
+            if ownerPed ~= 0 and DoesEntityExist(ownerPed) then
+                local ownerCoords = GetEntityCoords(ownerPed)
+                local dx = ownerCoords.x - joinCoords.x
+                local dy = ownerCoords.y - joinCoords.y
+                local dz = ownerCoords.z - joinCoords.z
+                if (dx * dx + dy * dy + dz * dz) <= updateRadiusSq then
+                    TriggerLatentClientEvent("SonoranCAD::tabletDisplay::UpdateDui", playerId, 0, owner, image)
+                end
+            end
         end
     end)
 end)

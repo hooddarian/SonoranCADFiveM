@@ -330,10 +330,26 @@ CreateThread(function()
                 if owner ~= source then
                     return
                 end
-                TriggerLatentClientEvent("SonoranCAD::caddisplay::UpdateDui", -1, 0, {
-                    type = "cad_image",
-                    image = image
-                })
+                local veh = NetworkGetEntityFromNetworkId(netId)
+                if veh == 0 or not DoesEntityExist(veh) then
+                    return
+                end
+
+                local vehCoords = GetEntityCoords(veh)
+                local updateRadius = 15.0
+                local updateRadiusSq = updateRadius * updateRadius
+                for _, playerId in ipairs(GetPlayers()) do
+                    local ped = GetPlayerPed(playerId)
+                    if ped ~= 0 and DoesEntityExist(ped) then
+                        local pedCoords = GetEntityCoords(ped)
+                        if #(pedCoords - vehCoords) <= updateRadius then
+                            TriggerLatentClientEvent("SonoranCAD::caddisplay::UpdateDui", playerId, 0, {
+                                type = "cad_image",
+                                image = image
+                            })
+                        end
+                    end
+                end
             end)
 
             AddEventHandler("playerDropped", function()
