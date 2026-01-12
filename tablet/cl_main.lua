@@ -345,13 +345,10 @@ local function debugTabletPropTextures()
 end
 
 local function ensureTabletDui()
-	print("Ensuring tablet Dui")
 	if tabletDui ~= nil then
-		print("Tablet Dui already exists")
 		return
 	end
 	local htmlPath = ("nui://%s/html/display.html"):format(GetCurrentResourceName())
-	print("Creating Dui at path: "..htmlPath)
 	tabletDui = CreateDui(htmlPath, 512, 256)
 	local duiHandle = GetDuiHandle(tabletDui)
 	applyTabletTextureReplacement(duiHandle)
@@ -402,7 +399,7 @@ AddEventHandler("SonoranCAD::Tablet::CadScreenshotResponse", function(requestId,
 	updateTabletDui({type = "cad_image", image = image})
 	if image ~= tabletLastBroadcastImage then
 		tabletLastBroadcastImage = image
-		TriggerServerEvent("SonoranCAD::tabletDisplay::BroadcastCadScreenshot", image)
+		TriggerLatentServerEvent("SonoranCAD::tabletDisplay::BroadcastCadScreenshot", 0, image)
 	end
 end)
 

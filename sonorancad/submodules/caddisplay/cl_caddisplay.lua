@@ -740,7 +740,7 @@ CreateThread(function()
                 end
                 updateDui({type = "cad_image", image = image})
                 if meta.vehNet ~= nil then
-                    TriggerServerEvent("SonoranCAD::caddisplay::BroadcastCadScreenshot", meta.vehNet, image)
+                    TriggerLatentServerEvent("SonoranCAD::caddisplay::BroadcastCadScreenshot", 0, meta.vehNet, image)
                 end
             end)
 

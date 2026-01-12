@@ -119,7 +119,7 @@ CreateThread(function()
         end
         local src = source
         tabletScreens[src] = image
-        TriggerClientEvent("SonoranCAD::tabletDisplay::UpdateDui", -1, src, image)
+        TriggerLatentClientEvent("SonoranCAD::tabletDisplay::UpdateDui", -1, 0, src, image)
     end)
 
     AddEventHandler("playerDropped", function()
@@ -128,7 +128,7 @@ CreateThread(function()
 
     AddEventHandler("playerJoining", function(playerId)
         for owner, image in pairs(tabletScreens) do
-            TriggerClientEvent("SonoranCAD::tabletDisplay::UpdateDui", playerId, owner, image)
+            TriggerLatentClientEvent("SonoranCAD::tabletDisplay::UpdateDui", playerId, 0, owner, image)
         end
     end)
 end)

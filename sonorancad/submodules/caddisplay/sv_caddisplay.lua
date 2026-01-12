@@ -330,7 +330,7 @@ CreateThread(function()
                 if owner ~= source then
                     return
                 end
-                TriggerClientEvent("SonoranCAD::caddisplay::UpdateDui", -1, {
+                TriggerLatentClientEvent("SonoranCAD::caddisplay::UpdateDui", -1, 0, {
                     type = "cad_image",
                     image = image
                 })
