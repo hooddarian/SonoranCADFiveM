@@ -3,6 +3,11 @@ isRegistered = false
 usingTablet = false
 myident = nil
 isMiniVisible = false
+local caddisplayEnabled = true
+
+local function requestCadDisplayConfig()
+	TriggerServerEvent("SonoranCAD::tabletDisplay::RequestConfig")
+end
 
 -- Debugging Information
 isDebugging = true
@@ -25,7 +30,7 @@ Citizen.CreateThread(function()
 	if apiMode == 1 then
 		tabletURL = "https://sonorancad.com/"
 	elseif apiMode == 0 then
-		tabletURL = "https://https://staging.dev.sonorancad.com/"
+		tabletURL = "https://staging.dev.sonorancad.com/"
 	end
 	local convar = GetConvar("sonorantablet_cadUrl", tabletURL)
 	local comId = convar:match("comid=(%w+)")
@@ -36,6 +41,7 @@ Citizen.CreateThread(function()
 	end
 
 	TriggerServerEvent("SonoranCAD::mini:CallSync_S")
+	requestCadDisplayConfig()
 
 	-- Disable Controls Loop
 	while true do
@@ -345,6 +351,9 @@ local function debugTabletPropTextures()
 end
 
 local function ensureTabletDui()
+	if not caddisplayEnabled then
+		return
+	end
 	if tabletDui ~= nil then
 		return
 	end
@@ -367,12 +376,25 @@ local function destroyTabletDuiObjects()
 	tabletLastBroadcastImage = nil
 end
 
+RegisterNetEvent("SonoranCAD::tabletDisplay::Config")
+AddEventHandler("SonoranCAD::tabletDisplay::Config", function(config)
+	caddisplayEnabled = config and config.enabled == true
+	if not caddisplayEnabled then
+		tabletActiveRequests = {}
+		tabletLastBroadcastImage = nil
+		destroyTabletDuiObjects()
+	end
+end)
+
 local function updateTabletDui(payload)
 	if tabletDui and IsDuiAvailable(tabletDui) then
 		SendDuiMessage(tabletDui, json.encode(payload or {}))
 	end
 end
 local function sendCadScreenshotRequest(requestId)
+	if not caddisplayEnabled then
+		return
+	end
 	SendNUIMessage({
 		type = "caddisplay_screenshot_request",
 		requestId = requestId
@@ -382,12 +404,15 @@ end
 -- Request a CAD screenshot (for caddisplay) and forward responses back via a client event.
 RegisterNetEvent("SonoranCAD::Tablet::RequestCadScreenshot")
 AddEventHandler("SonoranCAD::Tablet::RequestCadScreenshot", function(requestId)
-	if not requestId then return end
+	if not caddisplayEnabled or not requestId then return end
 	sendCadScreenshotRequest(requestId)
 end)
 
 RegisterNetEvent("SonoranCAD::Tablet::CadScreenshotResponse")
 AddEventHandler("SonoranCAD::Tablet::CadScreenshotResponse", function(requestId, image)
+	if not caddisplayEnabled then
+		return
+	end
 	if not tabletActiveRequests[requestId] then
 		return
 	end
@@ -405,6 +430,9 @@ end)
 
 RegisterNetEvent("SonoranCAD::tabletDisplay::UpdateDui")
 AddEventHandler("SonoranCAD::tabletDisplay::UpdateDui", function(ownerId, image)
+	if not caddisplayEnabled then
+		return
+	end
 	if not image or image == "" then
 		return
 	end
@@ -444,7 +472,9 @@ function toggleTabletDisplay(enable)
         -- pull out tablet
 		nextTabletScreenshot = 0
 		tabletLastBroadcastImage = nil
-		ensureTabletDui()
+		if caddisplayEnabled then
+			ensureTabletDui()
+		end
         ensureAnimDict(animDict)
         ensureModel(model)
 
@@ -477,7 +507,7 @@ end
 CreateThread(function()
 	while true do
 		Wait(250)
-		if usingTablet then
+		if usingTablet and caddisplayEnabled then
 			local now = GetGameTimer()
 			if now >= nextTabletScreenshot then
 				local requestId = ("tabletdisplay-%d-%d"):format(GetPlayerServerId(PlayerId()), now)
@@ -534,6 +564,7 @@ AddEventHandler('onClientResourceStart', function(resourceName) --When resource 
 	end
 	SetFocused(false)
 	TriggerServerEvent("sonoran:tablet:forceCheckApiId")
+	requestCadDisplayConfig()
 end)
 
 AddEventHandler("onClientResourceStop", function(resourceName)
@@ -571,6 +602,10 @@ AddEventHandler("sonoran:tablet:failed", function(message)
 end)
 
 RegisterNUICallback("CadDisplayScreenshot", function(data, cb)
+	if not caddisplayEnabled then
+		if cb then cb({ ok = true }) end
+		return
+	end
 	TriggerEvent("SonoranCAD::Tablet::CadScreenshotResponse", data.requestId, data.image)
 	if cb then cb({ ok = true }) end
 end)

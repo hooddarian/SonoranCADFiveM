@@ -1,6 +1,15 @@
 CallCache = {}
 EmergencyCache = {}
 local tabletScreens = {}
+local function isCadDisplayEnabled()
+    local ok, cfg = pcall(function()
+        return exports["sonorancad"]:GetPluginConfig("caddisplay")
+    end)
+    if not ok or type(cfg) ~= "table" then
+        return false
+    end
+    return cfg.enabled == true
+end
 
 CreateThread(function()
     while GetResourceState("sonorancad") ~= "started" do
@@ -117,6 +126,9 @@ CreateThread(function()
         if not image or image == "" then
             return
         end
+        if not isCadDisplayEnabled() then
+            return
+        end
         local src = source
         tabletScreens[src] = image
         local srcPed = GetPlayerPed(src)
@@ -141,7 +153,16 @@ CreateThread(function()
         tabletScreens[source] = nil
     end)
 
+    RegisterNetEvent("SonoranCAD::tabletDisplay::RequestConfig", function()
+        TriggerClientEvent("SonoranCAD::tabletDisplay::Config", source, {
+            enabled = isCadDisplayEnabled()
+        })
+    end)
+
     AddEventHandler("playerJoining", function(playerId)
+        if not isCadDisplayEnabled() then
+            return
+        end
         local joinPed = GetPlayerPed(playerId)
         if joinPed == 0 or not DoesEntityExist(joinPed) then
             return
