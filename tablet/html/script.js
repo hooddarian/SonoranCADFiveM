@@ -9,6 +9,21 @@ var CallCache = {
 
 var maxrows = 10;
 
+let cachedResourceName = null;
+const isCfxNui = () => (typeof GetParentResourceName === "function") || (typeof window.invokeNative === "function");
+const getResourceName = () => {
+	if (cachedResourceName) return cachedResourceName;
+	if (typeof GetParentResourceName === "function") {
+		cachedResourceName = GetParentResourceName();
+		return cachedResourceName;
+	}
+	return "tablet";
+};
+const nui = (eventName, payload) => {
+	if (!isCfxNui()) return;
+	return $.post(`https://${getResourceName()}/${eventName}`, JSON.stringify(payload || {})).fail(() => {});
+};
+
 const KeyMaps = {
 	previous: "",
 	attach: "",
@@ -173,7 +188,7 @@ function attach() {
 			// Detach from other calls.
 			if (isAttached(call)) {
 				console.log("Detaching from call #" + call.dispatch.callId);
-				$.post('https://tablet/DetachFromCall', JSON.stringify({callId: call.dispatch.callId}));
+				nui('DetachFromCall', {callId: call.dispatch.callId});
 			}
 		}
 	} else {
@@ -181,25 +196,26 @@ function attach() {
 			// Detach from other calls.
 			if (isAttached(call)) {
 				console.log("Detaching from call #" + call.dispatch.callId);
-				$.post('https://tablet/DetachFromCall', JSON.stringify({callId: call.dispatch.callId}));
+				nui('DetachFromCall', {callId: call.dispatch.callId});
 			}
 		}
 		// Attach to the current call.
-		$.post('https://tablet/AttachToCall', JSON.stringify({callId: CallCache.active[currCall].dispatch.callId}));
+		nui('AttachToCall', {callId: CallCache.active[currCall].dispatch.callId});
 	}
 }
 
 function moduleVisible(module, visible) {
+	const el = $("#" + module + "Div");
 	if (visible) {
-		$("#"+ module + "Div").show();
+		el.css({ opacity: 1, pointerEvents: "auto" });
 	} else {
-		$("#"+ module + "Div").hide();
+		el.css({ opacity: 0, pointerEvents: "none" });
 	}
-	$.post('https://tablet/VisibleEvent', JSON.stringify({ state: visible, module: module }));
+	nui('VisibleEvent', { state: visible, module: module });
 }
 
 function showHelp() {
-	$.post('https://tablet/ShowHelp');
+	nui('ShowHelp');
 }
 
 $(function () {
@@ -295,20 +311,20 @@ $(function () {
 		}
 	});
 
-	document.getElementById('cadFrame').onkeyup = function (data) {
-		switch (data.which) {
-			case 27:
-				$.post('https://tablet/NUIFocusOff', JSON.stringify({}));
-				break;
-			default:
-				break;
-		}
-	}
+	// document.getElementById('cadFrame').onkeyup = function (data) {
+	// 	switch (data.which) {
+	// 		case 27:
+	// 			nui('NUIFocusOff', {});
+	// 			break;
+	// 		default:
+	// 			break;
+	// 	}
+	// }
 
 	document.onkeyup = function (data) {
 		switch (data.which) {
 			case 27:
-				$.post('https://tablet/NUIFocusOff', JSON.stringify({}));
+				nui('NUIFocusOff', {});
 				break;
 			default:
 				break;
@@ -329,7 +345,7 @@ $(function () {
 			}
 		}
 	}, true);
-	
+
 	document.addEventListener('mouseover', function(e) {
 		const draggingElements = document.querySelectorAll('.dragging');
 		if (draggingElements.length > 0) {
@@ -341,8 +357,8 @@ $(function () {
 		}
 	}, true);
 
-	window.addEventListener("message", receiveMessage, false);
-	
+window.addEventListener("message", receiveMessage, false);
+
 	window.addEventListener('blur', function() {
 		const draggingElements = document.querySelectorAll('.dragging');
 		if (draggingElements.length > 0) {
@@ -365,7 +381,7 @@ function dragElement(elmnt) {
 	var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
 	var isDragging = false;
 	var dragOverlay = null;
-	
+
 	if (document.getElementById(elmnt.id + "header")) {
 		// if present, the header is where you move the DIV from:
 		document.getElementById(elmnt.id + "header").onmousedown = dragMouseDown;
@@ -378,16 +394,16 @@ function dragElement(elmnt) {
 		e = e || window.event;
 		e.preventDefault();
 		e.stopPropagation();
-		
+
 		// get the mouse cursor position at startup:
 		pos3 = e.clientX;
 		pos4 = e.clientY;
 		isDragging = true;
-		
+
 		elmnt.classList.add('dragging');
-		
+
 		createDragOverlay();
-		
+
 		document.onmouseup = closeDragElement;
 		// call a function whenever the cursor moves:
 		document.onmousemove = elementDrag;
@@ -397,9 +413,9 @@ function dragElement(elmnt) {
 		e = e || window.event;
 		e.preventDefault();
 		e.stopPropagation();
-		
+
 		if (!isDragging) return;
-		
+
 		// calculate the new cursor position:
 		pos1 = pos3 - e.clientX;
 		pos2 = pos4 - e.clientY;
@@ -418,10 +434,10 @@ function dragElement(elmnt) {
 		document.onmouseup = null;
 		document.onmousemove = null;
 	}
-	
+
 	function createDragOverlay() {
 		removeDragOverlay();
-		
+
 		dragOverlay = document.createElement('div');
 		dragOverlay.id = 'dragOverlay';
 		dragOverlay.style.cssText = `
@@ -435,26 +451,54 @@ function dragElement(elmnt) {
 			pointer-events: none;
 		`;
 		document.body.appendChild(dragOverlay);
-		
+
 		const cadFrame = document.getElementById('cadFrame');
 		if (cadFrame) {
 			cadFrame.style.pointerEvents = 'none';
 		}
 	}
-	
-	function removeDragOverlay() {
+
+function removeDragOverlay() {
 		if (dragOverlay) {
 			if (dragOverlay.parentNode) {
 				dragOverlay.parentNode.removeChild(dragOverlay);
 			}
 			dragOverlay = null;
 		}
-		
+
 		const cadFrame = document.getElementById('cadFrame');
 		if (cadFrame) {
 			cadFrame.style.pointerEvents = 'auto';
 		}
 	}
+}
+
+const SCREENSHOT_MAX_WIDTH = 512;
+const SCREENSHOT_MAX_HEIGHT = 256;
+const SCREENSHOT_QUALITY = 0.6;
+
+function downscaleCadScreenshot(dataUrl, done) {
+	if (!dataUrl || typeof dataUrl !== "string" || dataUrl.indexOf("data:image") !== 0) {
+		done(dataUrl);
+		return;
+	}
+
+	var img = new Image();
+	img.onload = function () {
+		var scale = Math.min(SCREENSHOT_MAX_WIDTH / img.width, SCREENSHOT_MAX_HEIGHT / img.height, 1);
+		var width = Math.max(1, Math.round(img.width * scale));
+		var height = Math.max(1, Math.round(img.height * scale));
+		var canvas = document.createElement("canvas");
+		canvas.width = width;
+		canvas.height = height;
+		var ctx = canvas.getContext("2d");
+		ctx.drawImage(img, 0, 0, width, height);
+		done(canvas.toDataURL("image/jpeg", SCREENSHOT_QUALITY));
+	};
+	img.onerror = function () {
+		done(dataUrl);
+	};
+	img.src = dataUrl;
 }
 
 function receiveMessage(event) {
@@ -463,22 +507,42 @@ function receiveMessage(event) {
 	let frameorigin = new URL(cadframe.src).origin;
 
 	if (currentlyCheckingApi && event.origin == frameorigin) {
-		$.post('https://tablet/SetAPIInformation', JSON.stringify(event.data));
+		nui('SetAPIInformation', event.data);
 		$("#check-api-id").hide();
+	}
+
+	// Forward caddisplay screenshot requests to the CAD iframe
+	if (event.data && event.data.type === "caddisplay_screenshot_request") {
+		if (cadframe && cadframe.contentWindow) {
+			cadframe.contentWindow.postMessage({
+				type: "scad:screenshot:request",
+				requestId: event.data.requestId
+			}, "*");
+		}
+	}
+
+	// Forward CAD iframe responses back to the game client
+	if (event.data && event.data.type === "scad:screenshot:response") {
+		downscaleCadScreenshot(event.data.image, function (image) {
+			nui('CadDisplayScreenshot', {
+				requestId: event.data.requestId,
+				image: image
+			});
+		});
 	}
 }
 
 function addCallNote(call, data) {
-	$.post('https://tablet/addCallNote', JSON.stringify(call), JSON.stringify(data));
+	nui('addCallNote', {call: call, data: data});
 }
 
 function runApiCheck() {
 	currentlyCheckingApi = true;
 	document.getElementById("cadFrame").src += '';
-	$.post('https://tablet/runApiCheck');
+	nui('runApiCheck');
 	$("#check-api-data").hide();
 }
 
 document.getElementById('homeButton').addEventListener('click', function() {
-	$.post('https://tablet/NUIFocusOff', JSON.stringify({}));
+	nui('NUIFocusOff', {});
 });

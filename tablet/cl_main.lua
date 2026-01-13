@@ -3,6 +3,11 @@ isRegistered = false
 usingTablet = false
 myident = nil
 isMiniVisible = false
+local caddisplayEnabled = true
+
+local function requestCadDisplayConfig()
+	TriggerServerEvent("SonoranCAD::tabletDisplay::RequestConfig")
+end
 
 -- Debugging Information
 isDebugging = true
@@ -25,7 +30,7 @@ Citizen.CreateThread(function()
 	if apiMode == 1 then
 		tabletURL = "https://sonorancad.com/"
 	elseif apiMode == 0 then
-		tabletURL = "https://cad.dev.sonoransoftware.com/"
+		tabletURL = "https://staging.dev.sonorancad.com/"
 	end
 	local convar = GetConvar("sonorantablet_cadUrl", tabletURL)
 	local comId = convar:match("comid=(%w+)")
@@ -36,6 +41,7 @@ Citizen.CreateThread(function()
 	end
 
 	TriggerServerEvent("SonoranCAD::mini:CallSync_S")
+	requestCadDisplayConfig()
 
 	-- Disable Controls Loop
 	while true do
@@ -154,6 +160,7 @@ end
 
 -- Remove NUI focus
 RegisterNUICallback('NUIFocusOff', function()
+	print('NUI Focus Off Received')
 	DisplayModule("cad", false)
 	toggleTabletDisplay(false)
 	SetFocused(false)
@@ -251,7 +258,7 @@ RegisterCommand("showcad", function(source, args, rawCommand)
 end, false)
 RegisterKeyMapping('showcad', 'CAD Tablet', 'keyboard', '')
 
-TriggerEvent('chat:addSuggestion', '/cadsize', "Resize CAD to specific width and height in pixels. Default is 1100x510", {
+TriggerEvent('chat:addSuggestion', '/cadsize', "Resize CAD to specific width and height in pixels. Default is 1280x640 (16:9-ish)", {
 	{ name="Width", help="Width in pixels" }, { name="Height", help="Height in pixels" }
 })
 RegisterCommand("cadsize", function(source,args,rawCommand)
@@ -267,6 +274,174 @@ RegisterCommand("checkapiid", function(source,args,rawCommand)
 end, false)
 
 local activeTablet = nil
+local tabletDisplayModel = "sf_prop_sf_tablet_01a"
+local tabletDisplayTxdName = "sf_prop_sf_tablet_01a"
+local tabletDisplayTextures = {"prop_arena_tablet_drone_screen_d", "prop_tablet_screen"}
+local tabletRuntimeTxdName = "tabletdisplay_screen"
+local tabletRuntimeTextureName = "tabletdisplay_screen_texture"
+local tabletDui = nil
+local tabletDuiObjects = {}
+local tabletActiveRequests = {}
+local tabletScreenshotInterval = 5000
+local nextTabletScreenshot = 0
+local tabletLastBroadcastImage = nil
+
+local function waitForTabletEntity(timeoutMs)
+	local deadline = GetGameTimer() + (timeoutMs or 2000)
+	while (not activeTablet or not DoesEntityExist(activeTablet)) and GetGameTimer() < deadline do
+		Wait(50)
+	end
+	return activeTablet and DoesEntityExist(activeTablet)
+end
+
+local function applyTabletTextureReplacement(duiHandle)
+	if not duiHandle then return end
+	local txd = CreateRuntimeTxd(tabletRuntimeTxdName)
+	CreateRuntimeTextureFromDuiHandle(txd, tabletRuntimeTextureName, duiHandle)
+	for _, textureName in ipairs(tabletDisplayTextures) do
+		AddReplaceTexture(tabletDisplayTxdName, textureName, tabletRuntimeTxdName, tabletRuntimeTextureName)
+	end
+end
+
+local function debugTabletPropTextures()
+	if not isDebugging then return end
+	CreateThread(function()
+		DebugMessage("Tablet prop texture scan starting", "tablet")
+		local hasEntity = waitForTabletEntity(2000)
+		DebugMessage(("Tablet entity ready=%s"):format(tostring(hasEntity)), "tablet")
+		local modelHash = GetHashKey(tabletDisplayModel)
+		RequestModel(modelHash)
+		local modelTimeout = GetGameTimer() + 2000
+		while not HasModelLoaded(modelHash) and GetGameTimer() < modelTimeout do
+			Wait(0)
+		end
+		DebugMessage(("Tablet model %s loaded=%s"):format(tabletDisplayModel, tostring(HasModelLoaded(modelHash))), "tablet")
+		local dictName = tabletDisplayTxdName
+		if type(RequestStreamedTextureDict) == "function" then
+			RequestStreamedTextureDict(dictName, false)
+			local dictTimeout = GetGameTimer() + 2000
+			while type(HasStreamedTextureDictLoaded) == "function"
+				and not HasStreamedTextureDictLoaded(dictName)
+				and GetGameTimer() < dictTimeout do
+				Wait(0)
+			end
+		end
+		local dictExists = "unknown"
+		if type(DoesStreamedTxdExist) == "function" then
+			dictExists = tostring(DoesStreamedTxdExist(dictName))
+		elseif type(DoesStreamedTextureDictExist) == "function" then
+			dictExists = tostring(DoesStreamedTextureDictExist(dictName))
+		end
+		local dictLoaded = "unknown"
+		if type(HasStreamedTextureDictLoaded) == "function" then
+			dictLoaded = tostring(HasStreamedTextureDictLoaded(dictName))
+		end
+		DebugMessage(("Texture dict %s (exists=%s, loaded=%s)"):format(dictName, dictExists, dictLoaded), "tablet")
+		for _, textureName in ipairs(tabletDisplayTextures) do
+			local res = GetTextureResolution(dictName, textureName)
+			local width = res and math.floor(res.x or 0) or 0
+			local height = res and math.floor(res.y or 0) or 0
+			local sizeLabel = (width > 0 or height > 0) and ("%dx%d"):format(width, height) or "missing"
+			DebugMessage((" - %s (%s)"):format(textureName, sizeLabel), "tablet")
+		end
+		if HasModelLoaded(modelHash) then
+			SetModelAsNoLongerNeeded(modelHash)
+		end
+	end)
+end
+
+local function ensureTabletDui()
+	if not caddisplayEnabled then
+		return
+	end
+	if tabletDui ~= nil then
+		return
+	end
+	local htmlPath = ("nui://%s/html/display.html"):format(GetCurrentResourceName())
+	tabletDui = CreateDui(htmlPath, 512, 256)
+	local duiHandle = GetDuiHandle(tabletDui)
+	applyTabletTextureReplacement(duiHandle)
+	debugTabletPropTextures()
+	table.insert(tabletDuiObjects, tabletDui)
+end
+
+local function destroyTabletDuiObjects()
+	for _, duiObj in ipairs(tabletDuiObjects) do
+		if IsDuiAvailable(duiObj) then
+			DestroyDui(duiObj)
+		end
+	end
+	tabletDuiObjects = {}
+	tabletDui = nil
+	tabletLastBroadcastImage = nil
+end
+
+RegisterNetEvent("SonoranCAD::tabletDisplay::Config")
+AddEventHandler("SonoranCAD::tabletDisplay::Config", function(config)
+	caddisplayEnabled = config and config.enabled == true
+	if not caddisplayEnabled then
+		tabletActiveRequests = {}
+		tabletLastBroadcastImage = nil
+		destroyTabletDuiObjects()
+	end
+end)
+
+local function updateTabletDui(payload)
+	if tabletDui and IsDuiAvailable(tabletDui) then
+		SendDuiMessage(tabletDui, json.encode(payload or {}))
+	end
+end
+local function sendCadScreenshotRequest(requestId)
+	if not caddisplayEnabled then
+		return
+	end
+	SendNUIMessage({
+		type = "caddisplay_screenshot_request",
+		requestId = requestId
+	})
+end
+
+-- Request a CAD screenshot (for caddisplay) and forward responses back via a client event.
+RegisterNetEvent("SonoranCAD::Tablet::RequestCadScreenshot")
+AddEventHandler("SonoranCAD::Tablet::RequestCadScreenshot", function(requestId)
+	if not caddisplayEnabled or not requestId then return end
+	sendCadScreenshotRequest(requestId)
+end)
+
+RegisterNetEvent("SonoranCAD::Tablet::CadScreenshotResponse")
+AddEventHandler("SonoranCAD::Tablet::CadScreenshotResponse", function(requestId, image)
+	if not caddisplayEnabled then
+		return
+	end
+	if not tabletActiveRequests[requestId] then
+		return
+	end
+	tabletActiveRequests[requestId] = nil
+	if not image or image == "" then
+		return
+	end
+	ensureTabletDui()
+	updateTabletDui({type = "cad_image", image = image})
+	if image ~= tabletLastBroadcastImage then
+		tabletLastBroadcastImage = image
+		TriggerLatentServerEvent("SonoranCAD::tabletDisplay::BroadcastCadScreenshot", 0, image)
+	end
+end)
+
+RegisterNetEvent("SonoranCAD::tabletDisplay::UpdateDui")
+AddEventHandler("SonoranCAD::tabletDisplay::UpdateDui", function(ownerId, image)
+	if not caddisplayEnabled then
+		return
+	end
+	if not image or image == "" then
+		return
+	end
+	if usingTablet and ownerId ~= GetPlayerServerId(PlayerId()) then
+		return
+	end
+	ensureTabletDui()
+	updateTabletDui({type = "cad_image", image = image})
+end)
 
 -- Helper to load an animation dictionary
 local function ensureAnimDict(dictName)
@@ -289,21 +464,28 @@ function toggleTabletDisplay(enable)
     local animDict = "amb@code_human_in_bus_passenger_idles@female@tablet@base"
     local enter    = "base"
     local exit     = "exit"
-    local model    = GetHashKey("prop_cs_tablet")
+    local model    = GetHashKey("sf_prop_sf_tablet_01a")
     local bone     = GetPedBoneIndex(ped, 60309)
 
-    if enable then
+	usingTablet = enable
+	if enable then
         -- pull out tablet
+		nextTabletScreenshot = 0
+		tabletLastBroadcastImage = nil
+		if caddisplayEnabled then
+			ensureTabletDui()
+		end
         ensureAnimDict(animDict)
         ensureModel(model)
 
         activeTablet = CreateObject(model, 1.0, 1.0, 1.0, true, true, false)
+        SetEntityLodDist(activeTablet, 9999)
         AttachEntityToEntity(
             activeTablet,
             ped,
             bone,
             0.03, 0.002, 0.0,    -- position offsets
-            10.0, 160.0, 0.0,    -- rotation offsets
+            10.0, 0.0, 0.0,    -- rotation offsets
             false, false, false, -- collision, vertex, etc.
             false, 2, true       -- isNetworked, boneIndex, useSoftPinning
         )
@@ -311,6 +493,8 @@ function toggleTabletDisplay(enable)
         TaskPlayAnim(ped, animDict, enter, 3.0, 3.0, -1, 49, 0, false, false, false)
     else
         -- put tablet away
+		tabletActiveRequests = {}
+		tabletLastBroadcastImage = nil
         if activeTablet then
             DetachEntity(activeTablet, true, true)
             DeleteObject(activeTablet)
@@ -319,6 +503,21 @@ function toggleTabletDisplay(enable)
         TaskPlayAnim(ped, animDict, exit, 3.0, 3.0, -1, 49, 0, false, false, false)
     end
 end
+
+CreateThread(function()
+	while true do
+		Wait(250)
+		if usingTablet and caddisplayEnabled then
+			local now = GetGameTimer()
+			if now >= nextTabletScreenshot then
+				local requestId = ("tabletdisplay-%d-%d"):format(GetPlayerServerId(PlayerId()), now)
+				tabletActiveRequests[requestId] = true
+				TriggerEvent("SonoranCAD::Tablet::RequestCadScreenshot", requestId)
+				nextTabletScreenshot = now + tabletScreenshotInterval
+			end
+		end
+	end
+end)
 
 -- Mini-Cad Callbacks
 RegisterNUICallback('AttachToCall', function(data, cb)
@@ -365,6 +564,14 @@ AddEventHandler('onClientResourceStart', function(resourceName) --When resource 
 	end
 	SetFocused(false)
 	TriggerServerEvent("sonoran:tablet:forceCheckApiId")
+	requestCadDisplayConfig()
+end)
+
+AddEventHandler("onClientResourceStop", function(resourceName)
+	if GetCurrentResourceName() ~= resourceName then
+		return
+	end
+	destroyTabletDuiObjects()
 end)
 
 RegisterNetEvent("SonoranCAD::Tablet::ApiIdNotLinked")
@@ -392,4 +599,13 @@ end)
 RegisterNetEvent("sonoran:tablet:failed")
 AddEventHandler("sonoran:tablet:failed", function(message)
 	errorLog("Failed to set API ID: "..tostring(message))
+end)
+
+RegisterNUICallback("CadDisplayScreenshot", function(data, cb)
+	if not caddisplayEnabled then
+		if cb then cb({ ok = true }) end
+		return
+	end
+	TriggerEvent("SonoranCAD::Tablet::CadScreenshotResponse", data.requestId, data.image)
+	if cb then cb({ ok = true }) end
 end)
