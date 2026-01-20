@@ -11,54 +11,60 @@ CreateThread(function()
             local displayModel = "prop_laptop_jimmy"
             local displayTexture = "prop_jimmy_screen"
             local displayModelHash = GetHashKey(displayModel)
-        local builtinScreens = {}
-        local builtinScreensByHash = {}
-        local allowlistHashes = {}
-        for _, v in pairs(pluginConfig.allowlistedCars or {}) do
-            if v and v ~= "" then
-                allowlistHashes[GetHashKey(v)] = true
+            local builtinScreens = {}
+            local builtinScreensByHash = {}
+            local allowlistHashes = {}
+            for _, v in pairs(pluginConfig.allowlistedCars or {}) do
+                if v and v ~= "" then
+                    allowlistHashes[GetHashKey(v)] = true
+                end
             end
-        end
-        for _, entry in ipairs(pluginConfig.builtinScreens or {}) do
-            local veh = entry.vehicle and string.upper(entry.vehicle) or nil
-            local screenTexture = entry.screenTexture
-            if veh and veh ~= "" and screenTexture then
-                local vehHash = GetHashKey(veh)
-                local texW = entry.textureWidth
-                local texH = entry.textureHeight
-                if type(texW) == "string" and not tonumber(texW) then
-                    local w, h = texW:match("(%d+)%s*[xX]%s*(%d+)")
-                    if w and h then
-                        texW = tonumber(w)
-                        texH = tonumber(h)
+            for _, entry in ipairs(pluginConfig.builtinScreens or {}) do
+                local veh = entry.vehicle and string.upper(entry.vehicle) or nil
+                local screenTexture = entry.screenTexture
+                if veh and veh ~= "" and screenTexture then
+                    local vehHash = GetHashKey(veh)
+                    local texW = entry.textureWidth
+                    local texH = entry.textureHeight
+                    if type(texW) == "string" and not tonumber(texW) then
+                        local w, h = texW:match("(%d+)%s*[xX]%s*(%d+)")
+                        if w and h then
+                            texW = tonumber(w)
+                            texH = tonumber(h)
+                        end
+                    elseif type(texW) == "table" then
+                        texH = texH or texW.y or texW.height or texW[2]
+                        texW = texW.x or texW.width or texW[1]
                     end
-                elseif type(texW) == "table" then
-                    texH = texH or texW.y or texW.height or texW[2]
-                    texW = texW.x or texW.width or texW[1]
+                    if type(texH) == "string" and not tonumber(texH) then
+                        local _, h = texH:match("(%d+)%s*[xX]%s*(%d+)")
+                        texH = h or texH
+                    elseif type(texH) == "table" then
+                        texH = texH.y or texH.height or texH[2] or texH[1]
+                    end
+                    texW = tonumber(texW) or 512
+                    texH = tonumber(texH) or 256
+                    local sx = texW / 512.0
+                    local sy = texH / 256.0
+                    local cfg = {
+                        texture = screenTexture,
+                        scale = { x = sx, y = sy, z = 1.0 },
+                        model = veh,
+                        modelHash =
+                            vehHash
+                    }
+                    builtinScreens[veh] = cfg
+                    builtinScreensByHash[vehHash] = cfg
                 end
-                if type(texH) == "string" and not tonumber(texH) then
-                    local _, h = texH:match("(%d+)%s*[xX]%s*(%d+)")
-                    texH = h or texH
-                elseif type(texH) == "table" then
-                    texH = texH.y or texH.height or texH[2] or texH[1]
-                end
-                texW = tonumber(texW) or 512
-                texH = tonumber(texH) or 256
-                local sx = texW / 512.0
-                local sy = texH / 256.0
-                local cfg = {texture = screenTexture, scale = {x = sx, y = sy, z = 1.0}, model = veh, modelHash = vehHash}
-                builtinScreens[veh] = cfg
-                builtinScreensByHash[vehHash] = cfg
             end
-        end
             local placementDb = {}
             local spawnedDisplays = {}
             local vehiclesWithDisplays = {}
             local miscDisplayIndex = 1
             local spawnedDisplayIndex = 1
             local displayMoveSpeed = 0.01
-            local displayPosition = {x = 0.0, y = 0.0, z = 0.0}
-            local displayRotation = {x = 0.0, y = 0.0, z = 0.0}
+            local displayPosition = { x = 0.0, y = 0.0, z = 0.0 }
+            local displayRotation = { x = 0.0, y = 0.0, z = 0.0 }
             local latestSpawnedDisplay = nil
             local attachedDisplay = false
             local displayScale = nil
@@ -99,7 +105,23 @@ CreateThread(function()
                     end)
                 elseif pluginConfig.general.notificationType == "pNotify" then
                     pcall(function()
-                        exports.pNotify:SendNotification({text = message, type = "info"})
+                        exports.pNotify:SendNotification({ text = message, type = "info" })
+                    end)
+                elseif pluginConfig.general.notificationType == "ox_lib" then
+                    pcall(function()
+                        exports.ox_lib:notify({
+                            title = "SonoranCAD",
+                            description = message,
+                            type = "info"
+                        })
+                    end)
+                elseif pluginConfig.general.notificationType == "lation_ui" then
+                    pcall(function()
+                        exports.lation_ui:notify({
+                            title = "SonoranCAD",
+                            message = message,
+                            type = 'info'
+                        })
                     end)
                 end
             end
@@ -183,32 +205,32 @@ CreateThread(function()
                 return nil
             end
 
-        local function hasAnyOccupant(veh)
-            if not DoesEntityExist(veh) then
+            local function hasAnyOccupant(veh)
+                if not DoesEntityExist(veh) then
+                    return false
+                end
+                local maxSeats = GetVehicleMaxNumberOfPassengers(veh)
+                for seat = -1, maxSeats do
+                    local ped = GetPedInVehicleSeat(veh, seat)
+                    if ped ~= 0 and DoesEntityExist(ped) then
+                        return true
+                    end
+                end
                 return false
             end
-            local maxSeats = GetVehicleMaxNumberOfPassengers(veh)
-            for seat = -1, maxSeats do
-                local ped = GetPedInVehicleSeat(veh, seat)
-                if ped ~= 0 and DoesEntityExist(ped) then
-                    return true
-                end
-            end
-            return false
-        end
 
-        local function getSeatIndexForPed(veh, ped)
-            if veh == 0 or not DoesEntityExist(veh) then
+            local function getSeatIndexForPed(veh, ped)
+                if veh == 0 or not DoesEntityExist(veh) then
+                    return nil
+                end
+                local maxSeats = GetVehicleMaxNumberOfPassengers(veh)
+                for seat = -1, maxSeats do
+                    if GetPedInVehicleSeat(veh, seat) == ped then
+                        return seat
+                    end
+                end
                 return nil
             end
-            local maxSeats = GetVehicleMaxNumberOfPassengers(veh)
-            for seat = -1, maxSeats do
-                if GetPedInVehicleSeat(veh, seat) == ped then
-                    return seat
-                end
-            end
-            return nil
-        end
 
             local function getBuiltinScreenConfig(veh)
                 if not DoesEntityExist(veh) then
@@ -253,7 +275,7 @@ CreateThread(function()
                     table.insert(spawnedDisplays, displayProp)
                     index = #spawnedDisplays
                 end
-                table.insert(vehiclesWithDisplays, {index = index, prop = displayProp, veh = veh, vehNet = vehNet})
+                table.insert(vehiclesWithDisplays, { index = index, prop = displayProp, veh = veh, vehNet = vehNet })
             end
 
             local function findExistingDisplayForVehicle(veh)
@@ -303,7 +325,8 @@ CreateThread(function()
                 CreateRuntimeTextureFromDuiHandle(txd, "caddisplay_screen_tex", duiHandle)
                 AddReplaceTexture(displayModel, displayTexture, "caddisplay_screen", "caddisplay_screen_tex")
                 for _, cfg in pairs(builtinScreens) do
-                    AddReplaceTexture(cfg.model or displayModel, cfg.texture, "caddisplay_screen", "caddisplay_screen_tex")
+                    AddReplaceTexture(cfg.model or displayModel, cfg.texture, "caddisplay_screen",
+                        "caddisplay_screen_tex")
                 end
                 table.insert(duiObjs, screenDui)
             end
@@ -341,14 +364,15 @@ CreateThread(function()
                 end
                 local bone = placement.Bone or -1
                 AttachEntityToEntity(obj, veh, bone, placement.Position.x, placement.Position.y, placement.Position.z,
-                                    placement.Rotation.pitch, placement.Rotation.roll, placement.Rotation.yaw, false, false,
-                                    true, false, 0, true)
+                    placement.Rotation.pitch, placement.Rotation.roll, placement.Rotation.yaw, false, false,
+                    true, false, 0, true)
                 FreezeEntityPosition(obj, false)
             end
 
             local function marker(pos)
-                DrawMarker(0, pos.x, pos.y, pos.z + 2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.2, 255, 255, 0, 255, true,
-                        false, 0, false, nil, nil, false)
+                DrawMarker(0, pos.x, pos.y, pos.z + 2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.2, 255, 255, 0, 255,
+                    true,
+                    false, 0, false, nil, nil, false)
             end
 
             local function setIndex(veh, index)
@@ -394,7 +418,7 @@ CreateThread(function()
                     local propCoords = GetEntityCoords(prop)
                     local vehCoords = GetEntityCoords(veh)
                     local offset = GetOffsetFromEntityGivenWorldCoords(veh, propCoords.x, propCoords.y, propCoords.z)
-                    displayPosition = {x = offset.x, y = offset.y, z = offset.z}
+                    displayPosition = { x = offset.x, y = offset.y, z = offset.z }
                     local propRot = GetEntityRotation(prop, 2)
                     local vehRot = GetEntityRotation(veh, 2)
                     displayRotation = {
@@ -406,9 +430,9 @@ CreateThread(function()
             end
 
             local function spawningCadDisplay()
-                local modelNames = {pluginConfig.lang.objectName}
+                local modelNames = { pluginConfig.lang.objectName }
                 if WarMenu.ComboBox(pluginConfig.lang.modelComboBox, modelNames, miscDisplayIndex, miscDisplayIndex,
-                                    function(current) miscDisplayIndex = current end) then
+                        function(current) miscDisplayIndex = current end) then
                     local veh = GetVehiclePedIsIn(PlayerPedId(), false)
                     if veh == 0 then
                         notify(pluginConfig.lang.notInVeh)
@@ -427,22 +451,22 @@ CreateThread(function()
             local function attachingCadDisplay()
                 local attachType = pluginConfig.lang.vehicleBone
                 if WarMenu.ComboBox(pluginConfig.lang.object, spawnedDisplays, spawnedDisplayIndex, spawnedDisplayIndex,
-                                    function(current)
-                    spawnedDisplayIndex = current
-                    local object = spawnedDisplays[current]
-                    if DoesEntityExist(object) then
-                        marker(GetEntityCoords(object))
-                    end
-                end) then
+                        function(current)
+                            spawnedDisplayIndex = current
+                            local object = spawnedDisplays[current]
+                            if DoesEntityExist(object) then
+                                marker(GetEntityCoords(object))
+                            end
+                        end) then
                     attachType = pluginConfig.lang.vehicleBone
                 elseif WarMenu.Button(pluginConfig.lang.attachButton) then
                     local veh = GetVehiclePedIsIn(PlayerPedId(), false)
                     if veh ~= 0 and spawnedDisplays[spawnedDisplayIndex] ~= nil then
                         refreshOffsetsForCurrentSelection()
                         AttachEntityToEntity(spawnedDisplays[spawnedDisplayIndex], veh,
-                                            GetEntityBoneIndexByName(veh, "chassis"), displayPosition.x, displayPosition.y,
-                                            displayPosition.z, displayRotation.x, displayRotation.y, displayRotation.z,
-                                            false, false, true, false, 0, true)
+                            GetEntityBoneIndexByName(veh, "chassis"), displayPosition.x, displayPosition.y,
+                            displayPosition.z, displayRotation.x, displayRotation.y, displayRotation.z,
+                            false, false, true, false, 0, true)
                         attachedDisplay = true
                     end
                 elseif WarMenu.Button(pluginConfig.lang.detachButton) then
@@ -511,9 +535,9 @@ CreateThread(function()
                     end
 
                     AttachEntityToEntity(spawnedDisplays[spawnedDisplayIndex], veh,
-                                        GetEntityBoneIndexByName(veh, "chassis"), displayPosition.x, displayPosition.y,
-                                        displayPosition.z, displayRotation.x, displayRotation.y, displayRotation.z, false,
-                                        false, true, false, 0, true)
+                        GetEntityBoneIndexByName(veh, "chassis"), displayPosition.x, displayPosition.y,
+                        displayPosition.z, displayRotation.x, displayRotation.y, displayRotation.z, false,
+                        false, true, false, 0, true)
 
                     if displayScale and HasScaleformMovieLoaded(displayScale) then
                         BeginScaleformMovieMethod(displayScale, "CLEAR_ALL")
@@ -715,19 +739,19 @@ CreateThread(function()
                 end
             end)
 
-        RegisterNetEvent("SonoranCAD::caddisplay::SyncOwners", function(serverOwners)
-            displayOwners = serverOwners or {}
-            local me = GetPlayerServerId(PlayerId())
-            for vehNet, owner in pairs(displayOwners) do
-                if owner ~= nil then
-                    local key = tostring(vehNet)
-                    claimedOnce[key] = true
-                    if owner == me then
-                        notify("You now have control of the CAD display.")
+            RegisterNetEvent("SonoranCAD::caddisplay::SyncOwners", function(serverOwners)
+                displayOwners = serverOwners or {}
+                local me = GetPlayerServerId(PlayerId())
+                for vehNet, owner in pairs(displayOwners) do
+                    if owner ~= nil then
+                        local key = tostring(vehNet)
+                        claimedOnce[key] = true
+                        if owner == me then
+                            notify("You now have control of the CAD display.")
+                        end
                     end
                 end
-            end
-        end)
+            end)
 
             RegisterNetEvent("SonoranCAD::Tablet::CadScreenshotResponse", function(requestId, image)
                 local meta = activeRequests[requestId]
@@ -738,7 +762,7 @@ CreateThread(function()
                 if not image or image == "" then
                     return
                 end
-                updateDui({type = "cad_image", image = image})
+                updateDui({ type = "cad_image", image = image })
                 if meta.vehNet ~= nil then
                     TriggerLatentServerEvent("SonoranCAD::caddisplay::BroadcastCadScreenshot", 0, meta.vehNet, image)
                 end
@@ -817,7 +841,8 @@ CreateThread(function()
                 TriggerServerEvent("SonoranCAD::caddisplay::ClaimDisplay", vehNet, seat)
             end, false)
 
-            RegisterKeyMapping("SonoranCAD::caddisplay::Interact", "Interact with CAD Display", "keyboard", interactKeybind)
+            RegisterKeyMapping("SonoranCAD::caddisplay::Interact", "Interact with CAD Display", "keyboard",
+                interactKeybind)
 
             RegisterCommand("SonoranCAD::caddisplay::AcceptRequest", function()
                 if not incomingRequest then
@@ -827,7 +852,8 @@ CreateThread(function()
                     incomingRequest.requester, true)
                 incomingRequest = nil
             end, false)
-            RegisterKeyMapping("SonoranCAD::caddisplay::AcceptRequest", "Accept CAD control request", "keyboard", acceptKeybind)
+            RegisterKeyMapping("SonoranCAD::caddisplay::AcceptRequest", "Accept CAD control request", "keyboard",
+                acceptKeybind)
 
             RegisterCommand("SonoranCAD::caddisplay::DenyRequest", function()
                 if not incomingRequest then
@@ -874,7 +900,7 @@ CreateThread(function()
                                 if prop ~= nil and DoesEntityExist(prop) then
                                     if (car._nextReq or 0) <= now then
                                         local reqId = ("caddisplay-%s-%d"):format(ownerId, now)
-                                        activeRequests[reqId] = {vehNet = vehNet}
+                                        activeRequests[reqId] = { vehNet = vehNet }
                                         TriggerEvent("SonoranCAD::Tablet::RequestCadScreenshot", reqId)
                                         car._nextReq = now + screenshotInterval
                                     end
@@ -887,4 +913,3 @@ CreateThread(function()
         end
     end)
 end)
-
