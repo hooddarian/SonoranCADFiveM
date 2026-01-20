@@ -60,6 +60,8 @@ local config = {
             none: disable notification
             chat: Sends a message in chat
             pnotify: Uses pNotify to show a notification
+            ox_lib: Uses ox_lib to show a notification
+            lation_ui: Uses lation_ui to show a notification
             custom: Use the custom event instead (see docs)
     ]]
     callerNotifyMethod = "chat",
@@ -76,6 +78,8 @@ local config = {
             none: disable notification
             chat: Sends a message in chat
             pnotify: Uses pNotify to show a notification
+            ox_lib: Uses ox_lib to show a notification
+            lation_ui: Uses lation_ui to show a notification
             custom: Use the custom event instead (see docs)
     ]]
     unitNotifyMethod = "chat",
@@ -137,6 +141,8 @@ local config = {
         noteNotifyMethod:
             chat: send new notes via chat
             pnotify: send new notes via a pNotify popup (requires pNotify resource)
+            ox_lib: send new notes via a ox_lib notification (requires ox_lib resource)
+            lation_ui: send new notes via a lation_ui notification (requires lation_ui resource)
             custom: fire a client-side event that your script will consume (each active unit gets SonoranCAD::dispatchnotify:NewCallNote with an object containing callId and note)
     ]]
     noteNotifyMethod = "chat",

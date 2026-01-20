@@ -52,12 +52,35 @@
                     TriggerEvent('SonoranCAD::callcommands:SendCallApi', isEmergency, caller, callLocation,
                         description, source, nil, pluginConfig.useCallLocation, type)
                     -- Sending the user a message stating the call has been sent
-                    TriggerClientEvent("chat:addMessage", source, {
-                        args = {"^0^5^*[SonoranCAD]^r ",
-                                "^7Your call has been sent to dispatch. Help is on the way!"}
-                    })
+                    if pluginConfig.callerNotifyMethod == "chat" then     
+                        TriggerClientEvent("chat:addMessage", source, {
+                            args = {"^0^5^*[SonoranCAD]^r ",
+                                    "^7Your call has been sent to dispatch. Help is on the way!"}
+                        })
+                    elseif pluginConfig.callerNotifyMethod == "pnotify" then
+                        TriggerClientEvent("pNotify:SendNotification", source, {
+                            text = "Your call has been sent to dispatch. Help is on the way!",
+                            type = "success",
+                            layout = "bottomcenter",
+                            timeout = "10000"
+                        })
+                    elseif pluginConfig.callerNotifyMethod == "ox_lib" then
+                        TriggerClientEvent("ox_lib:notify", source, {
+                            title = "SonoranCAD",
+                            description = "Your call has been sent to dispatch. Help is on the way!",
+                            duration = "10000",
+                            type = "success"
+                        })
+                    elseif pluginConfig.callerNotifyMethod == "lation_ui" then
+                        TriggerClientEvent('lation_ui:notify', source, {
+                            title = 'SonoranCAD',
+                            message = "Your call has been sent to dispatch. Help is on the way!",
+                            duration = "10000",
+                            type = 'success'
+                        })
+                    end
                 else
-                    -- Throwing an error message due to now call description stated
+                    -- Throwing an error message due to no call description stated
                     TriggerClientEvent("chat:addMessage", source, {
                         args = {"^0[ ^1Error ^0] ", "You need to specify a call description."}
                     })

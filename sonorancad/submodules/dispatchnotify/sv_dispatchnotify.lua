@@ -100,6 +100,10 @@ if pluginConfig.enabled then
         CallNotes[callId] = nil
     end
 
+    local function stripColorCodes(text)
+        return text:gsub("%^.", "")
+    end
+
     local ActiveDispatchers = {}
 
     AddEventHandler("SonoranCAD::pushevents:UnitLogin", function(unit)
@@ -148,10 +152,24 @@ if pluginConfig.enabled then
                         SendMessage(type, player, message)
                     elseif pluginConfig.unitNotifyMethod == "pnotify" then
                         TriggerClientEvent("pNotify:SendNotification", player, {
-                            text = message,
+                            text = stripColorCodes(message),
                             type = "error",
                             layout = "bottomcenter",
                             timeout = "10000"
+                        })
+                    elseif pluginConfig.unitNotifyMethod == "ox_lib" then
+                        TriggerClientEvent("ox_lib:notify", player, {
+                            title = "SonoranCAD",
+                            description = stripColorCodes(message),
+                            duration = "10000",
+                            type = "info"
+                        })
+                    elseif pluginConfig.unitNotifyMethod == "lation_ui" then
+                        TriggerClientEvent('lation_ui:notify', player, {
+                            title = 'SonoranCAD',
+                            message = stripColorCodes(message),
+                            duration = "10000",
+                            type = 'info'
                         })
                     elseif pluginConfig.unitNotifyMethod == "custom" then
                         TriggerClientEvent("SonoranCAD::dispatchnotify:IncomingCallNotify", player, message)
@@ -348,10 +366,24 @@ if pluginConfig.enabled then
                 SendMessage("dispatch", callerId, pluginConfig.notifyMessage:gsub("{officer}", unit.data.name))
             elseif pluginConfig.callerNotifyMethod == "pnotify" then
                 TriggerClientEvent("pNotify:SendNotification", callerId, {
-                    text = pluginConfig.notifyMessage:gsub("{officer}", unit.data.name),
-                    type = "error",
+                    text = stripColorCodes(pluginConfig.notifyMessage:gsub("{officer}", unit.data.name)),
+                    type = "info",
                     layout = "bottomcenter",
                     timeout = "10000"
+                })
+            elseif pluginConfig.callerNotifyMethod == "ox_lib" then
+                TriggerClientEvent("ox_lib:notify", callerId, {
+                    title = "SonoranCAD",
+                    description = stripColorCodes(pluginConfig.notifyMessage:gsub("{officer}", unit.data.name)),
+                    duration = "10000",
+                    type = "info"
+                })
+            elseif pluginConfig.callerNotifyMethod == "lation_ui" then
+                TriggerClientEvent('lation_ui:notify', callerId, {
+                    title = 'SonoranCAD',
+                    message = stripColorCodes(pluginConfig.notifyMessage:gsub("{officer}", unit.data.name)),
+                    duration = "10000",
+                    type = 'info'
                 })
             elseif pluginConfig.callerNotifyMethod == "custom" then
                 TriggerEvent("SonoranCAD::dispatchnotify:UnitAttach", call.dispatch, callerId, officerId, unit.data.name)
@@ -515,14 +547,29 @@ if pluginConfig.enabled then
                     for k, v in pairs(patterns) do
                         message = message:gsub(k, v)
                     end
+
                     if pluginConfig.noteNotifyMethod == "chat" then
                         SendMessage("dispatch", officerId, message)
                     elseif pluginConfig.noteNotifyMethod == "pnotify" then
                         TriggerClientEvent("pNotify:SendNotification", officerId, {
-                            text = message,
+                            text = stripColorCodes(message),
                             type = "info",
                             layout = "bottomcenter",
                             timeout = "10000"
+                        })
+                    elseif pluginConfig.noteNotifyMethod == "ox_lib" then
+                        TriggerClientEvent("ox_lib:notify", officerId, {
+                            title = "SonoranCAD",
+                            description = stripColorCodes(message),
+                            duration = "10000",
+                            type = "info"
+                        })
+                    elseif pluginConfig.noteNotifyMethod == "lation_ui" then
+                        TriggerClientEvent('lation_ui:notify', officerId, {
+                            title = 'SonoranCAD',
+                            message = stripColorCodes(message),
+                            duration = "10000",
+                            type = 'info'
                         })
                     else
                         TriggerClientEvent("SonoranCAD::dispatchnotify:NewCallNote", officerId, data)
