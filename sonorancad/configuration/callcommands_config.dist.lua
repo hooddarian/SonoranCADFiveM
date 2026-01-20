@@ -44,7 +44,7 @@ local config = {
             ox_lib: Uses ox_lib to show a notification
             lation_ui: Uses lation_ui to show a notification
     ]]
-    callerNotifyMethod = "lation_ui",
+    callerNotifyMethod = "pnotify",
 }
 
 if config.enabled then Config.RegisterPluginConfig(config.pluginName, config) end

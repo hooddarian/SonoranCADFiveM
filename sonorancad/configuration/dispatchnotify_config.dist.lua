@@ -64,7 +64,7 @@ local config = {
             lation_ui: Uses lation_ui to show a notification
             custom: Use the custom event instead (see docs)
     ]]
-    callerNotifyMethod = "chat",
+    callerNotifyMethod = "pnotify",
     --[[
         notifyMessage: Message template to use when sending to the player
 
@@ -82,7 +82,7 @@ local config = {
             lation_ui: Uses lation_ui to show a notification
             custom: Use the custom event instead (see docs)
     ]]
-    unitNotifyMethod = "chat",
+    unitNotifyMethod = "pnotify",
     --[[
         incomingCallMessage: how should officers be notified of a new 911 call?
 
@@ -145,7 +145,7 @@ local config = {
             lation_ui: send new notes via a lation_ui notification (requires lation_ui resource)
             custom: fire a client-side event that your script will consume (each active unit gets SonoranCAD::dispatchnotify:NewCallNote with an object containing callId and note)
     ]]
-    noteNotifyMethod = "chat",
+    noteNotifyMethod = "pnotify",
     --[[
         noteMessage: Message to send to officers when a note is added, using the placeholders:
             {callid} - the call ID

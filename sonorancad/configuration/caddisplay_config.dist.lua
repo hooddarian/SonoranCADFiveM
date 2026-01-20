@@ -72,7 +72,7 @@ local config = {
     },
 
     general = {
-        notificationType = "native", -- Options: native, pNotify, okokNotify, ox_lib, lation_ui
+        notificationType = "pNotify", -- Options: native, pNotify, okokNotify, ox_lib, lation_ui
         useAllowlistAsBlacklist = false -- If true, allowlistedCars is treated as a blacklist
     },
 
