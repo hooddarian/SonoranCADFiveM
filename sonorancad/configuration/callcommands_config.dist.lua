@@ -39,12 +39,13 @@ local config = {
     --[[
         notifyMethod: how should the caller be notified?
             none: disable notification
+            auto: Will automatically detect the system to use
             chat: Sends a message in chat
             pnotify: Uses pNotify to show a notification
             ox_lib: Uses ox_lib to show a notification
             lation_ui: Uses lation_ui to show a notification
     ]]
-    callerNotifyMethod = "pnotify",
+    callerNotifyMethod = "auto",
 }
 
 if config.enabled then Config.RegisterPluginConfig(config.pluginName, config) end

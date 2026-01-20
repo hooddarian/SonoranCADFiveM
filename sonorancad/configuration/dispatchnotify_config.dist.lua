@@ -58,13 +58,14 @@ local config = {
     --[[
         notifyMethod: how should the caller be notified?
             none: disable notification
+            auto: Will automatically detect the system to use
             chat: Sends a message in chat
             pnotify: Uses pNotify to show a notification
             ox_lib: Uses ox_lib to show a notification
             lation_ui: Uses lation_ui to show a notification
             custom: Use the custom event instead (see docs)
     ]]
-    callerNotifyMethod = "pnotify",
+    callerNotifyMethod = "auto",
     --[[
         notifyMessage: Message template to use when sending to the player
 
@@ -76,13 +77,14 @@ local config = {
     --[[
         unitNotifyMethod: how should units be notified?
             none: disable notification
+            auto: Will automatically detect the system to use
             chat: Sends a message in chat
             pnotify: Uses pNotify to show a notification
             ox_lib: Uses ox_lib to show a notification
             lation_ui: Uses lation_ui to show a notification
             custom: Use the custom event instead (see docs)
     ]]
-    unitNotifyMethod = "pnotify",
+    unitNotifyMethod = "auto",
     --[[
         incomingCallMessage: how should officers be notified of a new 911 call?
 
@@ -113,6 +115,20 @@ local config = {
     unitDutyMethod = "incad",
 
     --[[
+        unitStatusNotifyMethod: how should units be notified for status?
+            none: disable notification
+            auto: Will automatically detect the system to use
+            chat: Sends a message in chat
+            pnotify: Uses pNotify to show a notification
+            ox_lib: Uses ox_lib to show a notification
+            lation_ui: Uses lation_ui to show a notification
+            custom: Use the custom event instead (see docs)
+    ]]
+    unitStatusNotifyMethod = "auto",
+    unitStatusAttachedMessage = "You are now attached to call ^4{callId}^0. Description: ^4{description}^0",
+    unitStatusDetachedMessage = "You were detached from call ^4{callId}^0.",
+
+    --[[
         esxJobsAllowed: What jobs should count as being on duty?
     ]]
     esxJobsAllowed = {["police"] = true, ["ambulance"] = true, ["fire"] = true},
@@ -140,12 +156,13 @@ local config = {
     --[[
         noteNotifyMethod:
             chat: send new notes via chat
+            auto: Will automatically detect the system to use
             pnotify: send new notes via a pNotify popup (requires pNotify resource)
             ox_lib: send new notes via a ox_lib notification (requires ox_lib resource)
             lation_ui: send new notes via a lation_ui notification (requires lation_ui resource)
             custom: fire a client-side event that your script will consume (each active unit gets SonoranCAD::dispatchnotify:NewCallNote with an object containing callId and note)
     ]]
-    noteNotifyMethod = "pnotify",
+    noteNotifyMethod = "auto",
     --[[
         noteMessage: Message to send to officers when a note is added, using the placeholders:
             {callid} - the call ID

@@ -83,6 +83,28 @@ CreateThread(function()
             local acceptKeybind = pluginConfig.requestAcceptKey or "Y"
             local denyKeybind = pluginConfig.requestDenyKey or "L"
 
+            local AutoSelectedNotifyMethod = "native"
+            if pluginConfig.general.notificationType == "auto" then
+                if GetResourceState("okokNotify") == "started" then
+                    AutoSelectedNotifyMethod = "okokNotify"
+                elseif GetResourceState("lation_ui") == "started" then
+                    AutoSelectedNotifyMethod = "lation_ui"
+                elseif GetResourceState("ox_lib") == "started" then
+                    AutoSelectedNotifyMethod = "ox_lib"
+                elseif GetResourceState("pNotify") == "started" then
+                    AutoSelectedNotifyMethod = "pNotify"
+                else
+                    AutoSelectedNotifyMethod = "native"
+                end
+            end
+
+            local function ResolveNotifyMethod(cfgValue)
+                if cfgValue == "auto" then
+                    return AutoSelectedNotifyMethod
+                end
+                return cfgValue
+            end
+
             local function getVehNetIdOrNil(veh)
                 if veh == nil or veh == 0 then
                     return nil
@@ -95,19 +117,21 @@ CreateThread(function()
             end
 
             local function notify(message)
-                if pluginConfig.general.notificationType == "native" then
+                local notiType = ResolveNotifyMethod(pluginConfig.general.notificationType)
+
+                if notiType == "native" then
                     SetNotificationTextEntry("STRING")
                     AddTextComponentString(message)
                     DrawNotification(false, false)
-                elseif pluginConfig.general.notificationType == "okokNotify" then
+                elseif notiType == "okokNotify" then
                     pcall(function()
                         exports["okokNotify"]:Alert("CAD Display", message, 5000, "info")
                     end)
-                elseif pluginConfig.general.notificationType == "pNotify" then
+                elseif notiType == "pNotify" then
                     pcall(function()
                         exports.pNotify:SendNotification({ text = message, type = "info" })
                     end)
-                elseif pluginConfig.general.notificationType == "ox_lib" then
+                elseif notiType == "ox_lib" then
                     pcall(function()
                         exports.ox_lib:notify({
                             title = "SonoranCAD",
@@ -115,7 +139,7 @@ CreateThread(function()
                             type = "info"
                         })
                     end)
-                elseif pluginConfig.general.notificationType == "lation_ui" then
+                elseif notiType == "lation_ui" then
                     pcall(function()
                         exports.lation_ui:notify({
                             title = "SonoranCAD",

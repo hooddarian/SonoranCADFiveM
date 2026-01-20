@@ -22,6 +22,26 @@ if pluginConfig.enabled then
 
     local MappedCalls = {} -- eCallId -> call object
 
+    local AutoSelectedNotifyMethod = "chat"
+    if pluginConfig.callerNotifyMethod == "auto" or pluginConfig.noteNotifyMethod == "auto" or pluginConfig.unitNotifyMethod == "auto" or pluginConfig.unitStatusNotifyMethod == "auto" then
+        if GetResourceState("lation_ui") == "started" then
+            AutoSelectedNotifyMethod = "lation_ui"
+        elseif GetResourceState("ox_lib") == "started" then
+            AutoSelectedNotifyMethod = "ox_lib"
+        elseif GetResourceState("pNotify") == "started" then
+            AutoSelectedNotifyMethod = "pnotify"
+        else
+            AutoSelectedNotifyMethod = "chat"
+        end
+    end
+
+    local function ResolveNotifyMethod(cfgValue)
+        if cfgValue == "auto" then
+            return AutoSelectedNotifyMethod
+        end
+        return cfgValue
+    end
+
     local function findCall(id)
         for idx, callId in pairs(EmergencyToCallMapping) do
             debugLog(("check %s = %s"):format(id, callId))
@@ -148,30 +168,32 @@ if pluginConfig.enabled then
                 local player = GetPlayerFromIndex(i)
                 local unit = GetUnitByPlayerId(player)
                 if IsPlayerOnDuty(player) then
-                    if pluginConfig.unitNotifyMethod == "chat" then
+                    local unitMethod = ResolveNotifyMethod(pluginConfig.unitNotifyMethod)
+
+                    if unitMethod == "chat" then
                         SendMessage(type, player, message)
-                    elseif pluginConfig.unitNotifyMethod == "pnotify" then
+                    elseif unitMethod == "pnotify" then
                         TriggerClientEvent("pNotify:SendNotification", player, {
                             text = stripColorCodes(message),
                             type = "error",
                             layout = "bottomcenter",
                             timeout = "10000"
                         })
-                    elseif pluginConfig.unitNotifyMethod == "ox_lib" then
+                    elseif unitMethod == "ox_lib" then
                         TriggerClientEvent("ox_lib:notify", player, {
                             title = "SonoranCAD",
                             description = stripColorCodes(message),
                             duration = "10000",
                             type = "info"
                         })
-                    elseif pluginConfig.unitNotifyMethod == "lation_ui" then
+                    elseif unitMethod == "lation_ui" then
                         TriggerClientEvent('lation_ui:notify', player, {
                             title = 'SonoranCAD',
                             message = stripColorCodes(message),
                             duration = "10000",
                             type = 'info'
                         })
-                    elseif pluginConfig.unitNotifyMethod == "custom" then
+                    elseif unitMethod == "custom" then
                         TriggerClientEvent("SonoranCAD::dispatchnotify:IncomingCallNotify", player, message)
                     end
                 else
@@ -330,7 +352,40 @@ if pluginConfig.enabled then
         end
         local officerId = GetSourceByApiId(unit.data.apiIds)
         if officerId ~= nil then
-            SendMessage("dispatch", officerId, ("You are now attached to call ^4%s^0. Description: ^4%s^0"):format(call.dispatch.callId, call.dispatch.description))
+            local statusMethod = ResolveNotifyMethod(pluginConfig.unitStatusNotifyMethod)
+
+            local msgTemplate = pluginConfig.unitStatusAttachedMessage
+                or "You are now attached to call ^4{callId}^0. Description: ^4{description}^0"
+
+            local msg = msgTemplate
+                :gsub("{callId}", tostring(call.dispatch.callId))
+                :gsub("{description}", tostring(call.dispatch.description or ""))
+
+            if statusMethod == "chat" then
+                SendMessage("dispatch", officerId, msg)
+            elseif statusMethod == "pnotify" then
+                TriggerClientEvent("pNotify:SendNotification", officerId, {
+                    text = stripColorCodes(msg),
+                    type = "info",
+                    layout = "bottomcenter",
+                    timeout = "10000"
+                })
+            elseif statusMethod == "ox_lib" then
+                TriggerClientEvent("ox_lib:notify", officerId, {
+                    title = "SonoranCAD",
+                    description = stripColorCodes(msg),
+                    duration = "10000",
+                    type = "info"
+                })
+            elseif statusMethod == "lation_ui" then
+                TriggerClientEvent("lation_ui:notify", officerId, {
+                    title = "SonoranCAD",
+                    message = stripColorCodes(msg),
+                    duration = "10000",
+                    type = "info"
+                })
+            end
+
             TriggerClientEvent("SonoranCAD::dispatchnotify:CallAttach", officerId, call.dispatch.callId)
             local callerLocation = nil
             if callerId ~= nil then
@@ -362,30 +417,32 @@ if pluginConfig.enabled then
             debugLog("failed to find unit "..json.encode(unit))
         end
         if pluginConfig.enableCallerNotify and callerId ~= nil and call.dispatch.metaData.silentAlert == "false" then
-            if pluginConfig.callerNotifyMethod == "chat" then
+            local callerMethod = ResolveNotifyMethod(pluginConfig.callerNotifyMethod)
+
+            if callerMethod == "chat" then
                 SendMessage("dispatch", callerId, pluginConfig.notifyMessage:gsub("{officer}", unit.data.name))
-            elseif pluginConfig.callerNotifyMethod == "pnotify" then
+            elseif callerMethod == "pnotify" then
                 TriggerClientEvent("pNotify:SendNotification", callerId, {
                     text = stripColorCodes(pluginConfig.notifyMessage:gsub("{officer}", unit.data.name)),
                     type = "info",
                     layout = "bottomcenter",
                     timeout = "10000"
                 })
-            elseif pluginConfig.callerNotifyMethod == "ox_lib" then
+            elseif callerMethod == "ox_lib" then
                 TriggerClientEvent("ox_lib:notify", callerId, {
                     title = "SonoranCAD",
                     description = stripColorCodes(pluginConfig.notifyMessage:gsub("{officer}", unit.data.name)),
                     duration = "10000",
                     type = "info"
                 })
-            elseif pluginConfig.callerNotifyMethod == "lation_ui" then
+            elseif callerMethod == "lation_ui" then
                 TriggerClientEvent('lation_ui:notify', callerId, {
                     title = 'SonoranCAD',
                     message = stripColorCodes(pluginConfig.notifyMessage:gsub("{officer}", unit.data.name)),
                     duration = "10000",
                     type = 'info'
                 })
-            elseif pluginConfig.callerNotifyMethod == "custom" then
+            elseif callerMethod == "custom" then
                 TriggerEvent("SonoranCAD::dispatchnotify:UnitAttach", call.dispatch, callerId, officerId, unit.data.name)
             end
         else
@@ -489,7 +546,41 @@ if pluginConfig.enabled then
                 TriggerClientEvent("SonoranCAD::dispatchnotify:StopTracking", officerId)
             end
             TriggerClientEvent("SonoranCAD::dispatchnotify:CallDetach", officerId, call.dispatch.callId)
-            SendMessage("dispatch", officerId, ("You were detached from call %s."):format(call.dispatch.callId))
+
+            local statusMethod = ResolveNotifyMethod(pluginConfig.unitStatusNotifyMethod)
+
+            local msgTemplate = pluginConfig.unitStatusDetachedMessage
+                or "You were detached from call ^4{callId}^0."
+
+            local msg = msgTemplate:gsub("{callId}", tostring(call.dispatch.callId))
+
+            if statusMethod == "chat" then
+                SendMessage("dispatch", officerId, msg)
+
+            elseif statusMethod == "pnotify" then
+                TriggerClientEvent("pNotify:SendNotification", officerId, {
+                    text = stripColorCodes(msg),
+                    type = "info",
+                    layout = "bottomcenter",
+                    timeout = "10000"
+                })
+
+            elseif statusMethod == "ox_lib" then
+                TriggerClientEvent("ox_lib:notify", officerId, {
+                    title = "SonoranCAD",
+                    description = stripColorCodes(msg),
+                    duration = "10000",
+                    type = "info"
+                })
+
+            elseif statusMethod == "lation_ui" then
+                TriggerClientEvent("lation_ui:notify", officerId, {
+                    title = "SonoranCAD",
+                    message = stripColorCodes(msg),
+                    duration = "10000",
+                    type = "info"
+                })
+            end
         end
     end)
 
@@ -548,23 +639,25 @@ if pluginConfig.enabled then
                         message = message:gsub(k, v)
                     end
 
-                    if pluginConfig.noteNotifyMethod == "chat" then
+                    local noteMethod = ResolveNotifyMethod(pluginConfig.noteNotifyMethod)
+
+                    if noteMethod == "chat" then
                         SendMessage("dispatch", officerId, message)
-                    elseif pluginConfig.noteNotifyMethod == "pnotify" then
+                    elseif noteMethod == "pnotify" then
                         TriggerClientEvent("pNotify:SendNotification", officerId, {
                             text = stripColorCodes(message),
                             type = "info",
                             layout = "bottomcenter",
                             timeout = "10000"
                         })
-                    elseif pluginConfig.noteNotifyMethod == "ox_lib" then
+                    elseif noteMethod == "ox_lib" then
                         TriggerClientEvent("ox_lib:notify", officerId, {
                             title = "SonoranCAD",
                             description = stripColorCodes(message),
                             duration = "10000",
                             type = "info"
                         })
-                    elseif pluginConfig.noteNotifyMethod == "lation_ui" then
+                    elseif noteMethod == "lation_ui" then
                         TriggerClientEvent('lation_ui:notify', officerId, {
                             title = 'SonoranCAD',
                             message = stripColorCodes(message),
