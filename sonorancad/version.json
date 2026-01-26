@@ -16,7 +16,7 @@
       "requiresPlugins": []
     },
     "callcommands": {
-      "version": "2.2",
+      "version": "2.3",
       "requiresPlugins": [
         {
           "name": "locations",
@@ -29,7 +29,7 @@
       "requiresPlugins": []
     },
     "dispatchnotify": {
-      "version": "3.1",
+      "version": "3.2",
       "requiresPlugins": [
         {
           "name": "locations",
