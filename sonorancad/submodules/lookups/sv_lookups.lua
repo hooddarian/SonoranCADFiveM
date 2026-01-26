@@ -135,7 +135,7 @@ if pluginConfig.enabled then
             callback: the function called with the return data
             autoLookup: when populated with an API ID, pops open a search window on the officer's CAD (optional)
     ]]
-    function cadPlateLookup(plate, callback, autoLookup)
+    function cadPlateLookup(plate, basicFlag, callback, autoLookup)
         local data = {}
         data["plate"] = plate
         if autoLookup ~= nil then
