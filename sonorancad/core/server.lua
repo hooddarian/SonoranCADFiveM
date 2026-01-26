@@ -92,7 +92,8 @@ ApiEndpoints = {
 	["REMOVE_RECORD"] = "general",
 	["GET_TEMPLATES"] = "general",
 	["LOOKUP_INT"] = "general",
-	["SET_STATIONS"] = "emergency"
+	["SET_STATIONS"] = "emergency",
+    ["LOOKUP_VALUE"] = "general"
 }
 
 EndpointsRequireId = {
@@ -517,24 +518,176 @@ setCallPostal = function(callId, postal)
 	}, 'SET_CALL_POSTAL', function(_)
 	end)
 end
-performLookup = function(plate, cb)
-	exports['sonorancad']:performApiRequest({
-		{
-			['types'] = {
-				2,
-				3
-			},
-			['plate'] = plate,
-			['partial'] = false,
-			['first'] = '',
-			['last'] = '',
-			['mi'] = ''
-		}
-	}, 'LOOKUP', function(res)
+performLookup = function(plate, cb, options)
+	local data = {
+		['plate'] = plate,
+		['partial'] = false,
+		['first'] = '',
+		['last'] = '',
+		['mi'] = ''
+	}
+	if type(options) == "table" then
+		if options.types ~= nil then
+			data.types = options.types
+		elseif #options > 0 then
+			data.types = options
+		end
+		if options.partial ~= nil then
+			data.partial = options.partial
+		end
+		if options.first ~= nil then
+			data.first = options.first
+		end
+		if options.last ~= nil then
+			data.last = options.last
+		end
+		if options.mi ~= nil then
+			data.mi = options.mi
+		end
+	end
+	if data.types == nil then
+		data.types = {2, 3, 4, 5}
+	end
+	exports['sonorancad']:performApiRequest({data}, 'LOOKUP', function(res)
 		if cb ~= nil then
 			cb(res)
 		end
 	end)
+end
+local function normalizeLookupStatusValue(status)
+	if status == nil then
+		return nil
+	end
+	if type(status) == "number" then
+		return status
+	end
+	if type(status) == "string" then
+		local normalized = status:lower()
+		if normalized == "open" or normalized == "active" then
+			return 0
+		elseif normalized == "closed" or normalized == "inactive" then
+			return 1
+		elseif normalized == "pending" then
+			return 2
+		elseif normalized == "approved" then
+			return 3
+		elseif normalized == "rejected" then
+			return 4
+		end
+		local number = tonumber(status)
+		if number ~= nil then
+			return number
+		end
+	end
+	return nil
+end
+local function normalizeLookupStatuses(statuses)
+	local normalized = {}
+	local seen = {}
+	if type(statuses) ~= "table" then
+		statuses = {statuses}
+	end
+	for _, status in ipairs(statuses) do
+		local value = normalizeLookupStatusValue(status)
+		if value ~= nil and not seen[value] then
+			seen[value] = true
+			table.insert(normalized, value)
+		end
+	end
+	if #normalized == 0 then
+		normalized = {0, 1}
+	end
+	return normalized
+end
+-- Fetch all BOLO and warrant records using LOOKUP_VALUE with pagination.
+getAllWarrantsAndBolos = function(options, cb)
+	if type(options) == "function" then
+		cb = options
+		options = {}
+	end
+	if cb == nil then
+		cb = function() end
+	end
+	options = options or {}
+
+	local limit = tonumber(options.limit or options.pageSize) or 100
+	limit = math.max(1, math.floor(limit))
+
+	local offset = tonumber(options.offset) or 0
+	offset = math.max(0, math.floor(offset))
+
+	local page = tonumber(options.page)
+	if page ~= nil and page > 0 then
+		offset = (math.floor(page) - 1) * limit
+	end
+
+	local maxPages = tonumber(options.maxPages or options.pageLimit or options.pages)
+	if maxPages ~= nil then
+		maxPages = math.max(1, math.floor(maxPages))
+	end
+
+	local statuses = normalizeLookupStatuses(options.statuses or options.status)
+	local types = options.types
+	if type(types) ~= "table" or #types == 0 then
+		types = {2, 3}
+	end
+
+	local results = {}
+	local pagesFetched = 0
+	local statusIndex = 1
+
+	local function fetchNextPage(currentOffset)
+		local payload = {
+			searchType = 2, -- ACTIVE_STATUS
+			value = statuses[statusIndex],
+			types = types,
+			limit = limit,
+			offset = currentOffset
+		}
+		exports['sonorancad']:performApiRequest({payload}, "LOOKUP_VALUE", function(res, ok)
+			if not ok then
+				cb(nil, {ok = false, error = res})
+				return
+			end
+			local decoded = res
+			if type(res) == "string" then
+				local success, parsed = pcall(json.decode, res)
+				if success then
+					decoded = parsed
+				else
+					decoded = {}
+				end
+			end
+			local records = decoded
+			if type(decoded) ~= "table" then
+				records = {}
+			elseif decoded.records ~= nil and type(decoded.records) == "table" then
+				records = decoded.records
+			end
+			for _, record in ipairs(records) do
+				table.insert(results, record)
+			end
+			pagesFetched = pagesFetched + 1
+
+			local hasMore = #records >= limit
+			if maxPages ~= nil and pagesFetched >= maxPages then
+				cb(results, {ok = true, pages = pagesFetched, limit = limit, offset = offset, statuses = statuses, truncated = true})
+				return
+			end
+			if hasMore then
+				fetchNextPage(currentOffset + limit)
+				return
+			end
+			statusIndex = statusIndex + 1
+			if statusIndex <= #statuses then
+				fetchNextPage(offset)
+			else
+				cb(results, {ok = true, pages = pagesFetched, limit = limit, offset = offset, statuses = statuses})
+			end
+		end)
+	end
+
+	fetchNextPage(offset)
 end
 checkCADSubscriptionType = function()
 	while exports['sonorancad']:getCadVersion() == nil or exports['sonorancad']:getCadVersion() == -1 do
@@ -573,6 +726,7 @@ exports('remove911', remove911)
 exports('addCallNote', addCallNote)
 exports('setCallPostal', setCallPostal)
 exports('performLookup', performLookup)
+exports('getAllWarrantsAndBolos', getAllWarrantsAndBolos)
 exports('checkCADSubscriptionType', checkCADSubscriptionType)
 exports('getDispatchStatus', getDispatchStatus)
 exports('createDispatchCall', createDispatchCall)

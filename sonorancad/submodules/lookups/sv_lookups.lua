@@ -117,11 +117,14 @@ if pluginConfig.enabled then
             mi: Middle Initial
             callback: function called with return data
     ]]
-    function cadNameLookup(first, last, mi, callback)
+    function cadNameLookup(first, last, mi, callback, autoLookup)
         local data = {}
         data.first = first
         data.last = last
         data.mi = mi
+        if autoLookup ~= nil then
+            data["apiId"] = autoLookup
+        end
         cadLookup(data, callback, autoLookup)
     end
 
@@ -132,7 +135,7 @@ if pluginConfig.enabled then
             callback: the function called with the return data
             autoLookup: when populated with an API ID, pops open a search window on the officer's CAD (optional)
     ]]
-    function cadPlateLookup(plate, basicFlag, callback, autoLookup)
+    function cadPlateLookup(plate, callback, autoLookup)
         local data = {}
         data["plate"] = plate
         if autoLookup ~= nil then
