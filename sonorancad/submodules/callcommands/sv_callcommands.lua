@@ -8,6 +8,10 @@
     Config.LoadPlugin("callcommands", function(pluginConfig)
         if pluginConfig.enabled then
 
+            if pluginConfig.callerNotifyMethod == nil then
+                pluginConfig.callerNotifyMethod = "auto"
+            end
+
             local AutoSelectedNotifyMethod = "chat"
             if pluginConfig.callerNotifyMethod == "auto" then
                 if GetResourceState("lation_ui") == "started" then
@@ -74,7 +78,7 @@
                     -- Sending the user a message stating the call has been sent
                     local callerMethod = ResolveNotifyMethod(pluginConfig.callerNotifyMethod)
 
-                    if callerMethod == "chat" then     
+                    if callerMethod == "chat" then
                         TriggerClientEvent("chat:addMessage", source, {
                             args = {"^0^5^*[SonoranCAD]^r ",
                                     "^7Your call has been sent to dispatch. Help is on the way!"}
