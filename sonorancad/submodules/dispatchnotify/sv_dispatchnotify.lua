@@ -12,6 +12,10 @@ CreateThread(function() Config.LoadPlugin("dispatchnotify", function(pluginConfi
 
 if pluginConfig.enabled then
 
+    if pluginConfig.unitStatusNotifyMethod == nil then
+        pluginConfig.unitStatusNotifyMethod = "auto"
+    end
+
     local DISPATCH_TYPE = {"CALL_NEW", "CALL_EDIT", "CALL_CLOSE", "CALL_NOTE", "CALL_SELF_CLEAR"}
     local ORIGIN = {"CALLER", "RADIO_DISPATCH", "OBSERVED", "WALK_UP"}
     local STATUS = {"PENDING", "ACTIVE", "CLOSED"}
