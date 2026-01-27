@@ -117,11 +117,14 @@ if pluginConfig.enabled then
             mi: Middle Initial
             callback: function called with return data
     ]]
-    function cadNameLookup(first, last, mi, callback)
+    function cadNameLookup(first, last, mi, callback, autoLookup)
         local data = {}
         data.first = first
         data.last = last
         data.mi = mi
+        if autoLookup ~= nil then
+            data["apiId"] = autoLookup
+        end
         cadLookup(data, callback, autoLookup)
     end
 
